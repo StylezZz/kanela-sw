@@ -16,13 +16,15 @@ export function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="md:pl-64">
-        <Navbar
-          onMenuClick={() => setSidebarOpen(true)}
-          showCart={showCart}
-        />
+    <div className="min-h-screen bg-background md:flex">
+      {/* Sidebar de escritorio */}
+      <aside className="hidden md:block md:w-64">
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </aside>
+
+      {/* Contenedor principal */}
+      <div className="flex-1">
+        <Navbar onMenuClick={() => setSidebarOpen(true)} showCart={showCart} />
         <main className="container py-6 px-4">{children}</main>
       </div>
     </div>
