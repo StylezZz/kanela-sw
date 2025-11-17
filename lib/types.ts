@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Tipos de usuario
 export type UserRole = 'admin' | 'customer';
 
@@ -77,7 +78,7 @@ export interface Product {
   created_at: string;
   updated_at: string;
   // Join fields
-  category?: Category;
+  category_name: string;
 }
 
 export interface CreateProductDTO {

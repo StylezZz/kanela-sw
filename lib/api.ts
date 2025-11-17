@@ -212,7 +212,7 @@ export const categoriesApi = {
     if (params?.active_only) queryParams.append('active_only', 'true');
 
     const response = await apiRequest<BackendResponse<{ categories: Category[] }>>(
-      `/categories?${queryParams}`
+      `/categories`
     );
     return response.data!.categories;
   },

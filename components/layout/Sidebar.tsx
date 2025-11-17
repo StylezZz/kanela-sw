@@ -120,7 +120,7 @@ export function Sidebar({ open = true, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen w-64 border-r bg-background transition-transform duration-300 md:relative md:translate-x-0',
+          'fixed left-0 top-0 z-50 h-screen w-64 border-r bg-background transition-transform duration-300 md:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
