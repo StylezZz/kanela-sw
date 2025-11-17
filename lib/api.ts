@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { API_CONFIG } from './config';
+import { API_CONFIG, getAuthHeaders, setAuthToken, removeAuthToken } from './config';
 import type {
   User,
   CreateUserDTO,
@@ -212,7 +212,7 @@ export const categoriesApi = {
     if (params?.active_only) queryParams.append('active_only', 'true');
 
     const response = await apiRequest<BackendResponse<{ categories: Category[] }>>(
-      `/categories?${queryParams}`
+      `/categories`
     );
     return response.data!.categories;
   },

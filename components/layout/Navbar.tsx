@@ -40,9 +40,8 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
   };
 
   const getInitials = () => {
-    console.log('User name:', user?.data.user.full_name);
-    if (!user?.data.user.full_name) return 'U';
-    const names = user.data.user.full_name.split(' ');
+    if (!user?.full_name) return 'U';
+    const names = user.full_name.split(' ');
     const initials =
       names.length === 1
         ? names[0].charAt(0)
@@ -100,13 +99,13 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
               <Button variant="ghost" className="relative h-10 gap-2">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-white">
-                    {user ? getInitials(user.full_name) : 'U'}
+                    {user ? getInitials() : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-medium">{user?.full_name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {user?.data.user.role === 'admin'
+                    {user?.role === 'admin'
                       ? 'Administrador'
                       : 'Cliente'}
                   </span>

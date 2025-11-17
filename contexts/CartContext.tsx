@@ -41,20 +41,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [cart]);
 
   const calculateTotal = (items: CartItem[]): number => {
-    return items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    return items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0);
   };
 
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart((prevCart) => {
       const existingItem = prevCart.items.find(
-        (item) => item.product.id === product.id
+        (item) => item.product.product_id === product.product_id
       );
 
       let newItems: CartItem[];
 
       if (existingItem) {
         newItems = prevCart.items.map((item) =>
-          item.product.id === product.id
+          item.product.product_id === product.product_id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
@@ -72,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const removeFromCart = (productId: string) => {
     setCart((prevCart) => {
       const newItems = prevCart.items.filter(
-        (item) => item.product.id !== productId
+        (item) => item.product.product_id !== productId
       );
       return {
         items: newItems,
@@ -89,7 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     setCart((prevCart) => {
       const newItems = prevCart.items.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.product.product_id === productId ? { ...item, quantity } : item
       );
       return {
         items: newItems,
