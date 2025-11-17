@@ -49,20 +49,19 @@ export default function AccountPage() {
   const { transactions, addTransaction, updateUserBalance } = useApp();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
 
   const userTransactions = useMemo(() => {
     if (!user) return [];
     return transactions
-      .filter((t) => t.userId === user.id)
+      .filter((t) => t.userId === user.user_id)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [transactions, user]);
 
-  const paymentMethods: PaymentMethod[] = [
-    'efectivo',
-    'yape',
-    'plin',
-    'transferencia',
+  const paymentMethods: ('cash' | 'card' | 'transfer')[] = [
+    'cash',
+    'card',
+    'transfer',
   ];
 
   const handlePayment = () => {
@@ -74,17 +73,18 @@ export default function AccountPage() {
       return;
     }
 
-    const newBalance = user.balance + amount;
-    updateUserBalance(user.id, amount);
+    const currentBalance = parseFloat(user.current_balance);
+    const newBalance = currentBalance + amount;
+    updateUserBalance(user.user_id, amount);
 
     addTransaction({
-      userId: user.id,
+      userId: user.user_id,
       type: 'pago',
       amount,
       balance: newBalance,
       description: `Pago recibido - ${getPaymentMethodName(paymentMethod)}`,
       paymentMethod,
-      createdBy: user.id,
+      createdBy: user.user_id,
     });
 
     toast.success('Pago registrado correctamente');
@@ -126,15 +126,15 @@ export default function AccountPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-4xl font-bold">
-                  {formatCurrency(user?.balance || 0)}
+                  {formatCurrency(parseFloat(user?.current_balance || '0'))}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {(user?.balance || 0) < 0
+                  {parseFloat(user?.current_balance || '0') < 0
                     ? 'Deuda pendiente - Por favor realiza un pago'
                     : 'Saldo disponible'}
                 </p>
               </div>
-              {(user?.balance || 0) < 0 && (
+              {parseFloat(user?.current_balance || '0') < 0 && (
                 <Button size="lg" onClick={() => setIsPaymentOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Realizar Pago
@@ -286,7 +286,7 @@ export default function AccountPage() {
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground">Deuda actual</p>
               <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(user?.balance || 0)}
+                {formatCurrency(parseFloat(user?.current_balance || '0'))}
               </p>
             </div>
 
@@ -306,7 +306,7 @@ export default function AccountPage() {
               <Label>Método de Pago</Label>
               <Select
                 value={paymentMethod}
-                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                onValueChange={(value) => setPaymentMethod(value as 'cash' | 'card' | 'transfer')}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -327,7 +327,7 @@ export default function AccountPage() {
                   Nuevo balance:{' '}
                   <span className="font-bold">
                     {formatCurrency(
-                      (user?.balance || 0) + parseFloat(paymentAmount)
+                      parseFloat(user?.current_balance || '0') + parseFloat(paymentAmount)
                     )}
                   </span>
                 </p>

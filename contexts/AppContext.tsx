@@ -82,11 +82,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Productos
   const addProduct = (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newProduct: Product = {
+    const newProduct: any = {
       ...product,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      product_id: generateId(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
     const updated = [...products, newProduct];
     setProducts(updated);
@@ -95,23 +95,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateProduct = (id: string, productUpdate: Partial<Product>) => {
     const updated = products.map((p) =>
-      p.id === id ? { ...p, ...productUpdate, updatedAt: new Date() } : p
+      p.product_id === id ? { ...p, ...productUpdate, updated_at: new Date().toISOString() } : p
     );
     setProducts(updated);
     storage.set(STORAGE_KEYS.PRODUCTS, updated);
   };
 
   const deleteProduct = (id: string) => {
-    const updated = products.filter((p) => p.id !== id);
+    const updated = products.filter((p) => p.product_id !== id);
     setProducts(updated);
     storage.set(STORAGE_KEYS.PRODUCTS, updated);
   };
 
   // Menú semanal
   const addMenuItem = (menuItem: Omit<WeeklyMenu, 'id' | 'reservations'>) => {
-    const newMenuItem: WeeklyMenu = {
+    const newMenuItem: any = {
       ...menuItem,
-      id: generateId(),
+      product_id: generateId(),
       reservations: 0,
     };
     const updated = [...weeklyMenu, newMenuItem];
@@ -135,10 +135,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Reservas
   const addReservation = (reservation: Omit<MenuReservation, 'id' | 'createdAt'>) => {
-    const newReservation: MenuReservation = {
+    const newReservation: any = {
       ...reservation,
-      id: generateId(),
-      createdAt: new Date(),
+      product_id: generateId(),
+      created_at: new Date().toISOString(),
     };
     const updated = [...reservations, newReservation];
     setReservations(updated);
@@ -170,31 +170,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Órdenes
   const addOrder = (order: Omit<Order, 'id' | 'createdAt'>) => {
-    const newOrder: Order = {
+    const newOrder: any = {
       ...order,
-      id: generateId(),
-      createdAt: new Date(),
+      product_id: generateId(),
+      created_at: new Date().toISOString(),
     };
     const updated = [...orders, newOrder];
     setOrders(updated);
     storage.set(STORAGE_KEYS.ORDERS, updated);
 
     // Actualizar stock de productos
-    order.items.forEach((item) => {
-      const product = products.find((p) => p.id === item.productId);
+    order.items?.forEach((item) => {
+      const product = products.find((p) => p.product_id === item.product_id);
       if (product) {
-        updateProduct(product.id, { stock: product.stock - item.quantity });
+        updateProduct(product.product_id, { stock_quantity: product.stock_quantity - item.quantity });
       }
     });
   };
 
   const updateOrderStatus = (id: string, status: Order['status']) => {
     const updated = orders.map((o) =>
-      o.id === id
+      o.order_id === id
         ? {
             ...o,
             status,
-            completedAt: status === 'completed' ? new Date() : o.completedAt,
+            delivered_at: status === 'delivered' ? new Date() : o.delivered_at,
           }
         : o
     );
@@ -206,8 +206,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = (transaction: Omit<Transaction, 'id' | 'createdAt'>) => {
     const newTransaction: Transaction = {
       ...transaction,
-      id: generateId(),
-      createdAt: new Date(),
+      product_id: generateId(),
+      created_at: new Date().toISOString(),
     };
     const updated = [...transactions, newTransaction];
     setTransactions(updated);

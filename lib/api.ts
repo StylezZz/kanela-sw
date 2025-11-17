@@ -4,7 +4,6 @@ import type {
   CreateUserDTO,
   UpdateUserDTO,
   LoginDTO,
-  LoginResponse,
   Category,
   CreateCategoryDTO,
   Product,
@@ -18,37 +17,15 @@ import type {
   Notification,
   InventoryMovement,
   DashboardStats,
-  ApiResponse,
-  PaginatedResponse,
+  BackendResponse,
 } from './types';
 
-// ==================== HELPER FUNCTIONS ====================
-
-async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType?.includes('application/json');
-
-  if (!response.ok) {
-    const errorData = isJson ? await response.json() : { error: response.statusText };
-    throw new Error(errorData.error || errorData.message || 'Error en la petición');
-  }
-
-  if (isJson) {
-    const data = await response.json();
-    return {
-      success: true,
-      data: data.data || data,
-      message: data.message,
-    };
-  }
-
-  return { success: true } as ApiResponse<T>;
-}
+// ==================== HELPER PARA HACER REQUESTS ====================
 
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<ApiResponse<T>> {
+): Promise<T> {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
 
   const config: RequestInit = {
@@ -61,7 +38,13 @@ async function apiRequest<T>(
 
   try {
     const response = await fetch(url, config);
-    return await handleResponse<T>(response);
+    const data: BackendResponse<T> = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Error en la petición');
+    }
+
+    return data as T;
   } catch (error) {
     console.error('API Error:', error);
     throw error;
@@ -75,24 +58,26 @@ export const authApi = {
    * Login de usuario
    * POST /auth/login
    */
-  login: async (credentials: LoginDTO): Promise<LoginResponse> => {
-    const response = await apiRequest<LoginResponse>('/auth/login', {
+  login: async (credentials: LoginDTO) => {
+    const response = await apiRequest<BackendResponse<{ user: User }>>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
 
-    if (response.data?.token) {
-      setAuthToken(response.data.token);
-    }
+    const token = response.token!;
+    const user = response.data!.user;
 
-    return response.data!;
+    // Guardar token automáticamente
+    setAuthToken(token);
+
+    return { user, token };
   },
 
   /**
    * Logout de usuario
    * POST /auth/logout
    */
-  logout: async (): Promise<void> => {
+  logout: async () => {
     await apiRequest('/auth/logout', { method: 'POST' });
     removeAuthToken();
   },
@@ -102,24 +87,23 @@ export const authApi = {
    * GET /auth/me
    */
   getCurrentUser: async (): Promise<User> => {
-    const response = await apiRequest<User>('/auth/me');
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ user: User }>>('/auth/me');
+    return response.data!.user;
   },
 
   /**
    * Refrescar token
    * POST /auth/refresh
    */
-  refreshToken: async (): Promise<{ token: string }> => {
-    const response = await apiRequest<{ token: string }>('/auth/refresh', {
+  refreshToken: async () => {
+    const response = await apiRequest<BackendResponse<{ token: string }>>('/auth/refresh', {
       method: 'POST',
     });
 
-    if (response.data?.token) {
-      setAuthToken(response.data.token);
-    }
+    const token = response.data!.token;
+    setAuthToken(token);
 
-    return response.data!;
+    return { token };
   },
 };
 
@@ -134,16 +118,20 @@ export const usersApi = {
     page?: number;
     limit?: number;
     role?: string;
-  }): Promise<PaginatedResponse<User>> => {
+  }): Promise<{ users: User[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.role) queryParams.append('role', params.role);
 
-    const response = await apiRequest<PaginatedResponse<User>>(
+    const response = await apiRequest<BackendResponse<{ users: User[] }>>(
       `/users?${queryParams}`
     );
-    return response.data!;
+
+    return {
+      users: response.data!.users,
+      count: response.count || 0,
+    };
   },
 
   /**
@@ -151,8 +139,8 @@ export const usersApi = {
    * GET /users/:id
    */
   getById: async (userId: string): Promise<User> => {
-    const response = await apiRequest<User>(`/users/${userId}`);
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ user: User }>>(`/users/${userId}`);
+    return response.data!.user;
   },
 
   /**
@@ -160,11 +148,11 @@ export const usersApi = {
    * POST /users
    */
   create: async (userData: CreateUserDTO): Promise<User> => {
-    const response = await apiRequest<User>('/users', {
+    const response = await apiRequest<BackendResponse<{ user: User }>>('/users', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    return response.data!;
+    return response.data!.user;
   },
 
   /**
@@ -172,11 +160,11 @@ export const usersApi = {
    * PUT /users/:id
    */
   update: async (userId: string, userData: UpdateUserDTO): Promise<User> => {
-    const response = await apiRequest<User>(`/users/${userId}`, {
+    const response = await apiRequest<BackendResponse<{ user: User }>>(`/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(userData),
     });
-    return response.data!;
+    return response.data!.user;
   },
 
   /**
@@ -192,10 +180,10 @@ export const usersApi = {
    * GET /users/:id/credit-history
    */
   getCreditHistory: async (userId: string): Promise<CreditHistory[]> => {
-    const response = await apiRequest<CreditHistory[]>(
+    const response = await apiRequest<BackendResponse<{ history: CreditHistory[] }>>(
       `/users/${userId}/credit-history`
     );
-    return response.data!;
+    return response.data!.history;
   },
 };
 
@@ -210,10 +198,10 @@ export const categoriesApi = {
     const queryParams = new URLSearchParams();
     if (params?.active_only) queryParams.append('active_only', 'true');
 
-    const response = await apiRequest<Category[]>(
+    const response = await apiRequest<BackendResponse<{ categories: Category[] }>>(
       `/categories?${queryParams}`
     );
-    return response.data!;
+    return response.data!.categories;
   },
 
   /**
@@ -221,8 +209,10 @@ export const categoriesApi = {
    * GET /categories/:id
    */
   getById: async (categoryId: string): Promise<Category> => {
-    const response = await apiRequest<Category>(`/categories/${categoryId}`);
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ category: Category }>>(
+      `/categories/${categoryId}`
+    );
+    return response.data!.category;
   },
 
   /**
@@ -230,11 +220,11 @@ export const categoriesApi = {
    * POST /categories
    */
   create: async (categoryData: CreateCategoryDTO): Promise<Category> => {
-    const response = await apiRequest<Category>('/categories', {
+    const response = await apiRequest<BackendResponse<{ category: Category }>>('/categories', {
       method: 'POST',
       body: JSON.stringify(categoryData),
     });
-    return response.data!;
+    return response.data!.category;
   },
 
   /**
@@ -245,11 +235,14 @@ export const categoriesApi = {
     categoryId: string,
     categoryData: Partial<CreateCategoryDTO>
   ): Promise<Category> => {
-    const response = await apiRequest<Category>(`/categories/${categoryId}`, {
-      method: 'PUT',
-      body: JSON.stringify(categoryData),
-    });
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ category: Category }>>(
+      `/categories/${categoryId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(categoryData),
+      }
+    );
+    return response.data!.category;
   },
 
   /**
@@ -274,7 +267,7 @@ export const productsApi = {
     category_id?: string;
     available_only?: boolean;
     low_stock?: boolean;
-  }): Promise<PaginatedResponse<Product>> => {
+  }): Promise<{ products: Product[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
@@ -282,10 +275,14 @@ export const productsApi = {
     if (params?.available_only) queryParams.append('available_only', 'true');
     if (params?.low_stock) queryParams.append('low_stock', 'true');
 
-    const response = await apiRequest<PaginatedResponse<Product>>(
+    const response = await apiRequest<BackendResponse<{ products: Product[] }>>(
       `/products?${queryParams}`
     );
-    return response.data!;
+
+    return {
+      products: response.data!.products,
+      count: response.count || 0,
+    };
   },
 
   /**
@@ -293,8 +290,10 @@ export const productsApi = {
    * GET /products/:id
    */
   getById: async (productId: string): Promise<Product> => {
-    const response = await apiRequest<Product>(`/products/${productId}`);
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ product: Product }>>(
+      `/products/${productId}`
+    );
+    return response.data!.product;
   },
 
   /**
@@ -302,26 +301,26 @@ export const productsApi = {
    * POST /products
    */
   create: async (productData: CreateProductDTO): Promise<Product> => {
-    const response = await apiRequest<Product>('/products', {
+    const response = await apiRequest<BackendResponse<{ product: Product }>>('/products', {
       method: 'POST',
       body: JSON.stringify(productData),
     });
-    return response.data!;
+    return response.data!.product;
   },
 
   /**
    * Actualizar producto
    * PUT /products/:id
    */
-  update: async (
-    productId: string,
-    productData: UpdateProductDTO
-  ): Promise<Product> => {
-    const response = await apiRequest<Product>(`/products/${productId}`, {
-      method: 'PUT',
-      body: JSON.stringify(productData),
-    });
-    return response.data!;
+  update: async (productId: string, productData: UpdateProductDTO): Promise<Product> => {
+    const response = await apiRequest<BackendResponse<{ product: Product }>>(
+      `/products/${productId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(productData),
+      }
+    );
+    return response.data!.product;
   },
 
   /**
@@ -336,13 +335,11 @@ export const productsApi = {
    * Obtener movimientos de inventario de un producto
    * GET /products/:id/inventory-movements
    */
-  getInventoryMovements: async (
-    productId: string
-  ): Promise<InventoryMovement[]> => {
-    const response = await apiRequest<InventoryMovement[]>(
+  getInventoryMovements: async (productId: string): Promise<InventoryMovement[]> => {
+    const response = await apiRequest<BackendResponse<{ movements: InventoryMovement[] }>>(
       `/products/${productId}/inventory-movements`
     );
-    return response.data!;
+    return response.data!.movements;
   },
 };
 
@@ -360,7 +357,7 @@ export const ordersApi = {
     user_id?: string;
     start_date?: string;
     end_date?: string;
-  }): Promise<PaginatedResponse<Order>> => {
+  }): Promise<{ orders: Order[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
@@ -369,10 +366,14 @@ export const ordersApi = {
     if (params?.start_date) queryParams.append('start_date', params.start_date);
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-    const response = await apiRequest<PaginatedResponse<Order>>(
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders?${queryParams}`
     );
-    return response.data!;
+
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
   },
 
   /**
@@ -380,8 +381,8 @@ export const ordersApi = {
    * GET /orders/:id
    */
   getById: async (orderId: string): Promise<Order> => {
-    const response = await apiRequest<Order>(`/orders/${orderId}`);
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(`/orders/${orderId}`);
+    return response.data!.order;
   },
 
   /**
@@ -389,11 +390,11 @@ export const ordersApi = {
    * POST /orders
    */
   create: async (orderData: CreateOrderDTO): Promise<Order> => {
-    const response = await apiRequest<Order>('/orders', {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
-    return response.data!;
+    return response.data!.order;
   },
 
   /**
@@ -405,11 +406,14 @@ export const ordersApi = {
     status: string,
     cancellation_reason?: string
   ): Promise<Order> => {
-    const response = await apiRequest<Order>(`/orders/${orderId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status, cancellation_reason }),
-    });
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, cancellation_reason }),
+      }
+    );
+    return response.data!.order;
   },
 
   /**
@@ -417,11 +421,14 @@ export const ordersApi = {
    * POST /orders/:id/cancel
    */
   cancel: async (orderId: string, reason: string): Promise<Order> => {
-    const response = await apiRequest<Order>(`/orders/${orderId}/cancel`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    });
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }
+    );
+    return response.data!.order;
   },
 
   /**
@@ -431,15 +438,19 @@ export const ordersApi = {
   getMyOrders: async (params?: {
     page?: number;
     limit?: number;
-  }): Promise<PaginatedResponse<Order>> => {
+  }): Promise<{ orders: Order[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-    const response = await apiRequest<PaginatedResponse<Order>>(
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders/my-orders?${queryParams}`
     );
-    return response.data!;
+
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
   },
 };
 
@@ -454,16 +465,20 @@ export const creditPaymentsApi = {
     page?: number;
     limit?: number;
     user_id?: string;
-  }): Promise<PaginatedResponse<CreditPayment>> => {
+  }): Promise<{ payments: CreditPayment[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.user_id) queryParams.append('user_id', params.user_id);
 
-    const response = await apiRequest<PaginatedResponse<CreditPayment>>(
+    const response = await apiRequest<BackendResponse<{ payments: CreditPayment[] }>>(
       `/credit-payments?${queryParams}`
     );
-    return response.data!;
+
+    return {
+      payments: response.data!.payments,
+      count: response.count || 0,
+    };
   },
 
   /**
@@ -471,11 +486,14 @@ export const creditPaymentsApi = {
    * POST /credit-payments
    */
   create: async (paymentData: CreateCreditPaymentDTO): Promise<CreditPayment> => {
-    const response = await apiRequest<CreditPayment>('/credit-payments', {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    });
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ payment: CreditPayment }>>(
+      '/credit-payments',
+      {
+        method: 'POST',
+        body: JSON.stringify(paymentData),
+      }
+    );
+    return response.data!.payment;
   },
 
   /**
@@ -483,10 +501,10 @@ export const creditPaymentsApi = {
    * GET /credit-payments/my-payments
    */
   getMyPayments: async (): Promise<CreditPayment[]> => {
-    const response = await apiRequest<CreditPayment[]>(
+    const response = await apiRequest<BackendResponse<{ payments: CreditPayment[] }>>(
       '/credit-payments/my-payments'
     );
-    return response.data!;
+    return response.data!.payments;
   },
 };
 
@@ -501,10 +519,10 @@ export const notificationsApi = {
     const queryParams = new URLSearchParams();
     if (params?.unread_only) queryParams.append('unread_only', 'true');
 
-    const response = await apiRequest<Notification[]>(
+    const response = await apiRequest<BackendResponse<{ notifications: Notification[] }>>(
       `/notifications?${queryParams}`
     );
-    return response.data!;
+    return response.data!.notifications;
   },
 
   /**
@@ -542,24 +560,25 @@ export const dashboardApi = {
    * GET /dashboard/stats
    */
   getStats: async (): Promise<DashboardStats> => {
-    const response = await apiRequest<DashboardStats>('/dashboard/stats');
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ stats: DashboardStats }>>(
+      '/dashboard/stats'
+    );
+    return response.data!.stats;
   },
 
   /**
    * Obtener reporte de ventas
    * GET /dashboard/sales-report
    */
-  getSalesReport: async (params?: {
-    start_date?: string;
-    end_date?: string;
-  }): Promise<any> => {
+  getSalesReport: async (params?: { start_date?: string; end_date?: string }): Promise<any> => {
     const queryParams = new URLSearchParams();
     if (params?.start_date) queryParams.append('start_date', params.start_date);
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-    const response = await apiRequest<any>(`/dashboard/sales-report?${queryParams}`);
-    return response.data!;
+    const response = await apiRequest<BackendResponse<{ report: any }>>(
+      `/dashboard/sales-report?${queryParams}`
+    );
+    return response.data!.report;
   },
 };
 
