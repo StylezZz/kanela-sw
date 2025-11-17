@@ -3,8 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import api from '@/lib/api';
-import { API_CONFIG } from '@/lib/config';
-import { storage, STORAGE_KEYS, initialUsers } from '@/lib/data';
+import { getAuthToken } from '@/lib/config';
 
 interface AuthContextType {
   user: User | null;
@@ -27,11 +26,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const checkAuth = async()=>{
-    try{
-      const token = localStorage.getItem(API_CONFIG.TOKEN_KEY);
+  const checkAuth = async () => {
+    try {
+      const token = getAuthToken();
 
-      if(token){
+      if (token) {
         const currentUser = await api.auth.getCurrentUser();
         setUser(currentUser);
       }
@@ -40,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {

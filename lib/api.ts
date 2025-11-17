@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { API_CONFIG } from './config';
+import { API_CONFIG, getAuthHeaders, setAuthToken, removeAuthToken } from './config';
 import type {
   User,
   CreateUserDTO,

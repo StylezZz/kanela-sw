@@ -35,23 +35,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingCart, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, ShoppingCart, Edit, Trash2, Search, Loader2 } from 'lucide-react';
 import { formatCurrency, getCategoryName } from '@/lib/data';
 import { Product, Category } from '@/lib/types';
 import { toast } from 'sonner';
 import api from '@/lib/api';
-
-const getCategoryName = (category: string) => {
-  const names: Record<string, string> = {
-    almuerzos: 'Almuerzos',
-    bebidas: 'Bebidas',
-    snacks: 'Snacks',
-    postres: 'Postres',
-    utiles: 'Útiles',
-    otros: 'Otros',
-  };
-  return names[category] || category;
-};
 
 export default function ProductsPage() {
   const { isAdmin } = useAuth();
@@ -74,6 +62,24 @@ export default function ProductsPage() {
     category_id: '',
     stock: '',
   });
+
+  // Cargar productos desde la API
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.products.getAll();
+      setProducts(response.products);
+    } catch (error) {
+      console.error('Error cargando productos:', error);
+      toast.error('Error al cargar productos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
   const categoryNames: string[] = [
     'almuerzos',
@@ -122,26 +128,28 @@ export default function ProductsPage() {
       return;
     }
 
-    if (editingProduct) {
-      updateProduct(editingProduct.product_id, {
-        name: formData.name,
-        description: formData.description,
-        price: formData.price,
-        category_id: formData.category_id,
-        stock_quantity: parseInt(formData.stock),
-      });
-      toast.success('Producto actualizado correctamente');
-    } else {
-      addProduct({
-        name: formData.name,
-        description: formData.description,
-        price: formData.price,
-        category_id: formData.category_id,
-        stock_quantity: parseInt(formData.stock),
-        is_available: true,
-      } as any);
-      toast.success('Producto agregado correctamente');
-    }
+    setIsSaving(true);
+    try {
+      if (editingProduct) {
+        await api.products.update(editingProduct.product_id, {
+          name: formData.name,
+          description: formData.description,
+          price: parseFloat(formData.price),
+          category_id: formData.category_id,
+          stock_quantity: parseInt(formData.stock),
+        });
+        toast.success('Producto actualizado correctamente');
+      } else {
+        await api.products.create({
+          name: formData.name,
+          description: formData.description,
+          price: parseFloat(formData.price),
+          category_id: formData.category_id,
+          stock_quantity: parseInt(formData.stock),
+          is_available: true,
+        });
+        toast.success('Producto agregado correctamente');
+      }
 
       setIsDialogOpen(false);
       setEditingProduct(null);

@@ -1,3 +1,6 @@
+// NOTA IMPORTANTE: Este contexto necesita refactorización para usar la API del backend
+// en lugar de localStorage. Actualmente usa un enfoque local que no se sincroniza
+// con la base de datos PostgreSQL.
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -12,7 +15,6 @@ import {
 import {
   storage,
   STORAGE_KEYS,
-  initializeData,
   generateId,
 } from '@/lib/data';
 
@@ -62,8 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Inicializar datos si es necesario
-    initializeData();
+    // NOTA: initializeData() fue eliminado ya que ahora usamos el backend PostgreSQL
     loadData();
   }, []);
 
@@ -194,7 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ? {
             ...o,
             status,
-            delivered_at: status === 'delivered' ? new Date() : o.delivered_at,
+            delivered_at: status === 'delivered' ? new Date().toISOString() : o.delivered_at,
           }
         : o
     );
@@ -206,8 +207,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = (transaction: Omit<Transaction, 'id' | 'createdAt'>) => {
     const newTransaction: Transaction = {
       ...transaction,
-      product_id: generateId(),
-      created_at: new Date().toISOString(),
+      id: generateId(),
+      createdAt: new Date(),
     };
     const updated = [...transactions, newTransaction];
     setTransactions(updated);
@@ -216,16 +217,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Usuarios
   const updateUserBalance = (userId: string, amount: number) => {
-    const updated = users.map((u) =>
-      u.id === userId ? { ...u, balance: u.balance + amount } : u
+    // NOTA: Este método necesita refactorización para usar la API del backend
+    // Actualmente usa campos incorrectos (u.id debería ser u.user_id, balance no existe)
+    const updated = users.map((u: any) =>
+      u.user_id === userId ? { ...u, current_balance: (parseFloat(u.current_balance || '0') + amount).toString() } : u
     );
     setUsers(updated);
     storage.set(STORAGE_KEYS.USERS, updated);
 
     // Actualizar usuario actual si es el mismo
     const currentUser = storage.getSingle<User>(STORAGE_KEYS.CURRENT_USER);
-    if (currentUser?.id === userId) {
-      const updatedUser = updated.find((u) => u.id === userId);
+    if (currentUser?.user_id === userId) {
+      const updatedUser = updated.find((u: any) => u.user_id === userId);
       if (updatedUser) {
         storage.setSingle(STORAGE_KEYS.CURRENT_USER, updatedUser);
       }

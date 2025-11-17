@@ -48,140 +48,12 @@ export const storage = {
   },
 };
 
-// Datos iniciales de ejemplo
-export const initialUsers: User[] = [
-  {
-    id: '1',
-    name: 'Admin',
-    email: 'admin@colegio.com',
-    role: 'admin',
-    type: 'admin',
-    balance: 0,
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'María García',
-    email: 'maria@estudiante.com',
-    role: 'student',
-    type: 'secundaria',
-    grade: '5to',
-    section: 'A',
-    balance: -15.5,
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Pedro López',
-    email: 'pedro@estudiante.com',
-    role: 'student',
-    type: 'primaria',
-    grade: '4to',
-    section: 'B',
-    balance: 0,
-    createdAt: new Date(),
-  },
-  {
-    id: '4',
-    name: 'Prof. Ana Martínez',
-    email: 'ana@profesor.com',
-    role: 'teacher',
-    type: 'profesor',
-    balance: 0,
-    createdAt: new Date(),
-  },
-];
+// NOTA: Los datos demo han sido eliminados.
+// El sistema ahora se conecta directamente al backend PostgreSQL.
+// Los usuarios deben ser creados a través de la API del backend.
 
-export const initialProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Almuerzo Ejecutivo',
-    description: 'Plato del día con guarnición, ensalada y refresco',
-    price: 12.0,
-    category: 'almuerzos',
-    stock: 50,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Hamburguesa Clásica',
-    description: 'Hamburguesa de carne con papas fritas',
-    price: 8.5,
-    category: 'almuerzos',
-    stock: 30,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Jugo Natural',
-    description: 'Jugo de frutas natural (varios sabores)',
-    price: 3.0,
-    category: 'bebidas',
-    stock: 100,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '4',
-    name: 'Gaseosa Personal',
-    description: 'Gaseosa de 500ml',
-    price: 2.5,
-    category: 'bebidas',
-    stock: 80,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '5',
-    name: 'Galletas',
-    description: 'Paquete de galletas variadas',
-    price: 1.5,
-    category: 'snacks',
-    stock: 120,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '6',
-    name: 'Chocolate',
-    description: 'Barra de chocolate',
-    price: 2.0,
-    category: 'snacks',
-    stock: 90,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '7',
-    name: 'Gelatina',
-    description: 'Gelatina de sabores',
-    price: 2.5,
-    category: 'postres',
-    stock: 40,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '8',
-    name: 'Arroz con Pollo',
-    description: 'Arroz con pollo, ensalada y papa',
-    price: 10.0,
-    category: 'almuerzos',
-    stock: 35,
-    available: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+// NOTA: Los productos demo han sido eliminados.
+// Los productos ahora se obtienen directamente del backend PostgreSQL.
 
 export const initialMenu: WeeklyMenu[] = [
   {
@@ -246,30 +118,9 @@ export const initialMenu: WeeklyMenu[] = [
   },
 ];
 
-// Funciones de inicialización
-export const initializeData = () => {
-  if (typeof window === 'undefined') return;
-
-  // Inicializar solo si no hay datos
-  if (!storage.get(STORAGE_KEYS.USERS).length) {
-    storage.set(STORAGE_KEYS.USERS, initialUsers);
-  }
-  if (!storage.get(STORAGE_KEYS.PRODUCTS).length) {
-    storage.set(STORAGE_KEYS.PRODUCTS, initialProducts);
-  }
-  if (!storage.get(STORAGE_KEYS.MENU).length) {
-    storage.set(STORAGE_KEYS.MENU, initialMenu);
-  }
-  if (!storage.get(STORAGE_KEYS.ORDERS).length) {
-    storage.set(STORAGE_KEYS.ORDERS, []);
-  }
-  if (!storage.get(STORAGE_KEYS.TRANSACTIONS).length) {
-    storage.set(STORAGE_KEYS.TRANSACTIONS, []);
-  }
-  if (!storage.get(STORAGE_KEYS.RESERVATIONS).length) {
-    storage.set(STORAGE_KEYS.RESERVATIONS, []);
-  }
-};
+// NOTA: La función de inicialización de datos demo ha sido eliminada.
+// El sistema ahora se conecta directamente al backend PostgreSQL.
+// No se necesita inicializar datos locales.
 
 // Helper para generar IDs únicos
 export const generateId = (): string => {

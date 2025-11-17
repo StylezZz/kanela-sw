@@ -1,12 +1,13 @@
 // Tipos de usuario
-export type UserRole = 'admin' | 'student' | 'teacher';
+export type UserRole = 'admin' | 'customer';
 
-export type UserType = 'primaria' | 'secundaria' | 'profesor' | 'admin';
+export type AccountStatus = 'active' | 'suspended' | 'inactive';
 
 export interface User {
-  id: string;
-  name: string;
+  user_id: string;
   email: string;
+  full_name: string;
+  phone?: string;
   role: UserRole;
   account_status: AccountStatus;
   suspension_reason?: string;
@@ -38,18 +39,30 @@ export interface UpdateUserDTO {
   credit_limit?: number;
 }
 
-// Categorías de productos
-export type ProductCategory =
-  | 'almuerzos'
-  | 'bebidas'
-  | 'snacks'
-  | 'postres'
-  | 'utiles'
-  | 'otros';
+// Categorías
+export interface Category {
+  category_id: string;
+  name: string;
+  description?: string;
+  icon_url?: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCategoryDTO {
+  name: string;
+  description?: string;
+  icon_url?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
 
 // Producto
 export interface Product {
-  id: string;
+  product_id: string;
+  category_id: string;
   name: string;
   description?: string;
   price: string;
@@ -64,7 +77,6 @@ export interface Product {
   created_at: string;
   updated_at: string;
   // Join fields
-  category_name?: string;
   category?: Category;
 }
 
@@ -73,10 +85,29 @@ export interface CreateProductDTO {
   name: string;
   description?: string;
   price: number;
-  week: string; // Formato: "2025-W01"
-  reservations: number;
-  available: boolean;
-  image?: string;
+  image_url?: string;
+  thumbnail_url?: string;
+  stock_quantity?: number;
+  min_stock_level?: number;
+  is_available?: boolean;
+  preparation_time?: number;
+  calories?: number;
+  allergens?: string[];
+}
+
+export interface UpdateProductDTO {
+  category_id?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  image_url?: string;
+  thumbnail_url?: string;
+  stock_quantity?: number;
+  min_stock_level?: number;
+  is_available?: boolean;
+  preparation_time?: number;
+  calories?: number;
+  allergens?: string[];
 }
 
 // Reserva de menú
@@ -89,23 +120,18 @@ export interface MenuReservation {
   createdAt: Date;
 }
 
-// Métodos de pago
-export type PaymentMethod =
-  | 'efectivo'
-  | 'yape'
-  | 'plin'
-  | 'transferencia'
-  | 'fiado';
+// Métodos de pago y estados
+export type PaymentMethod = 'cash' | 'card' | 'credit';
+export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';
 
 // Estado de la orden
 export type OrderStatus =
   | 'pending'
-  | 'processing'
-  | 'completed'
+  | 'confirmed'
+  | 'preparing'
+  | 'ready'
+  | 'delivered'
   | 'cancelled';
-
-export type PaymentMethod = 'cash' | 'card' | 'credit';
-export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';
 
 export interface Order {
   order_id: string;
@@ -140,8 +166,10 @@ export interface CreateOrderDTO {
 
 // ==================== ITEMS DE ORDEN ====================
 export interface OrderItem {
-  productId: string;
-  productName: string;
+  order_item_id: string;
+  order_id: string;
+  product_id: string;
+  product_name: string;
   quantity: number;
   unit_price: string;
   subtotal: string;
@@ -202,29 +230,61 @@ export interface CreditHistory {
   order_id?: string;
   payment_id?: string;
   description: string;
-  orderId?: string;
-  paymentMethod?: PaymentMethod;
-  createdAt: Date;
-  createdBy: string; // ID del admin que creó la transacción
+  performed_by?: string;
+  created_at: string;
+  // Joins
+  user?: User;
+  order?: Order;
+  payment?: CreditPayment;
+  performed_by_user?: User;
 }
 
-// Estadísticas para el dashboard del admin
-export interface DashboardStats {
-  totalSales: number;
-  todaySales: number;
-  pendingOrders: number;
-  totalUsers: number;
-  totalDebt: number;
-  topProducts: {
-    productId: string;
-    productName: string;
-    quantitySold: number;
-    revenue: number;
-  }[];
-  menuReservations: {
-    day: WeekDay;
-    count: number;
-  }[];
+// ==================== NOTIFICACIONES ====================
+export type NotificationType =
+  | 'order_status'
+  | 'credit_alert'
+  | 'account_alert'
+  | 'promotion'
+  | 'system';
+
+export interface Notification {
+  notification_id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  is_read: boolean;
+  read_at?: string;
+  order_id?: string;
+  created_at: string;
+  // Joins
+  user?: User;
+  order?: Order;
+}
+
+// ==================== MOVIMIENTOS DE INVENTARIO ====================
+export type InventoryMovementType =
+  | 'purchase'
+  | 'sale'
+  | 'adjustment'
+  | 'waste'
+  | 'return';
+
+export interface InventoryMovement {
+  movement_id: string;
+  product_id: string;
+  movement_type: InventoryMovementType;
+  quantity: number;
+  stock_before: number;
+  stock_after: number;
+  order_id?: string;
+  notes?: string;
+  performed_by?: string;
+  created_at: string;
+  // Joins
+  product?: Product;
+  order?: Order;
+  performed_by_user?: User;
 }
 
 // Carrito de compras
@@ -289,15 +349,6 @@ export interface WeeklyMenu {
   week: string;
   reservations: number;
   available: boolean;
-}
-
-export interface MenuReservation {
-  id: string;
-  userId: string;
-  menuId: string;
-  date: Date;
-  status: 'confirmed' | 'cancelled';
-  createdAt: Date;
 }
 
 export interface Transaction {
