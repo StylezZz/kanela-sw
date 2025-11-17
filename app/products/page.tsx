@@ -35,9 +35,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingCart, Edit, Trash2, Search, Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/data';
-import { Product } from '@/lib/types';
+import { Plus, ShoppingCart, Edit, Trash2, Search } from 'lucide-react';
+import { formatCurrency, getCategoryName } from '@/lib/data';
+import { Product, Category } from '@/lib/types';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -71,77 +71,25 @@ export default function ProductsPage() {
     name: '',
     description: '',
     price: '',
-    category: 'almuerzos',
+    category_id: '',
     stock: '',
   });
-   
 
-  // Mapeo de categorías del backend al frontend
-const categoryMapping: Record<string, string> = {
-  'Almuerzos': 'almuerzos',
-  'Bebidas Calientes': 'bebidas',
-  'Bebidas Frías': 'bebidas',
-  'Snacks': 'snacks',
-  'Postres': 'postres',
-  'Sandwiches': 'snacks', // O crea una categoría nueva
-  'Útiles': 'utiles',
-};
-
-// Mapeo inverso para filtrar
-const categoryToBackend: Record<string, string[]> = {
-  'almuerzos': ['Almuerzos'],
-  'bebidas': ['Bebidas Calientes', 'Bebidas Frías'],
-  'snacks': ['Snacks', 'Sandwiches'],
-  'postres': ['Postres'],
-  'utiles': ['Útiles'],
-  'otros': [], // Cualquier categoría no mapeada
-};
-
-const loadProducts = async () => {
-  try {
-    setIsLoading(true);
-    const params: any = {
-      available_only: !isAdmin,
-    };
-
-    // No enviar filtro de categoría al backend, filtraremos en el frontend
-    // porque las categorías del backend son diferentes
-
-    const response = await api.products.getAll(params || {});
-    
-    const backendProducts = response.data?.products || [];
-    
-    // Mapear los productos del backend al formato del frontend
-    const mappedProducts: Product[] = backendProducts.map((p: any) => ({
-      id: p.product_id,
-      name: p.name,
-      description: p.description || '',
-      price: parseFloat(p.price),
-      category: categoryMapping[p.category_name] || 'otros',
-      categoryName: p.category_name, // Guardar nombre original
-      stock: p.stock_quantity,
-      available: p.is_available,
-      imageUrl: p.image_url,
-      preparationTime: p.preparation_time,
-      calories: p.calories,
-      allergens: p.allergens,
-    }));
-    
-    setProducts(mappedProducts);
-  } catch (error) {
-    console.error('Error cargando productos:', error);
-    toast.error('Error al cargar productos');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const categoryNames: string[] = [
+    'almuerzos',
+    'bebidas',
+    'snacks',
+    'postres',
+    'utiles',
+    'otros',
+  ];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesCategory =
-      selectedCategory === 'all' || product.category === selectedCategory;
+      selectedCategory === 'all' || product.category_id === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -151,9 +99,9 @@ const loadProducts = async () => {
       setFormData({
         name: product.name,
         description: product.description || '',
-        price: product.price.toString(),
-        category: product.category,
-        stock: product.stock.toString(),
+        price: parseFloat(product.price).toString(),
+        category_id: product.category_id,
+        stock: product.stock_quantity.toString(),
       });
     } else {
       setEditingProduct(null);
@@ -161,7 +109,7 @@ const loadProducts = async () => {
         name: '',
         description: '',
         price: '',
-        category: 'almuerzos',
+        category_id: '',
         stock: '',
       });
     }
@@ -174,27 +122,26 @@ const loadProducts = async () => {
       return;
     }
 
-    try {
-      setIsSaving(true);
-
-      const productData = {
+    if (editingProduct) {
+      updateProduct(editingProduct.product_id, {
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        stock: parseInt(formData.stock),
-      };
-
-      if (editingProduct) {
-        await api.products.update(editingProduct.id, productData);
-        toast.success('Producto actualizado correctamente');
-      } else {
-        await api.products.create({
-          ...productData,
-          available: true,
-        });
-        toast.success('Producto agregado correctamente');
-      }
+        price: formData.price,
+        category_id: formData.category_id,
+        stock_quantity: parseInt(formData.stock),
+      });
+      toast.success('Producto actualizado correctamente');
+    } else {
+      addProduct({
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        category_id: formData.category_id,
+        stock_quantity: parseInt(formData.stock),
+        is_available: true,
+      } as any);
+      toast.success('Producto agregado correctamente');
+    }
 
       setIsDialogOpen(false);
       setEditingProduct(null);
@@ -324,9 +271,9 @@ const loadProducts = async () => {
                   <div className="grid gap-2">
                     <Label htmlFor="category">Categoría *</Label>
                     <Select
-                      value={formData.category}
+                      value={formData.category_id}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, category: value })
+                        setFormData({ ...formData, category_id: '' })
                       }
                       disabled={isSaving}
                     >
@@ -334,7 +281,7 @@ const loadProducts = async () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
+                        {categoryNames.map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {getCategoryName(cat)}
                           </SelectItem>
@@ -384,7 +331,7 @@ const loadProducts = async () => {
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
           <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
             <TabsTrigger value="all">Todos</TabsTrigger>
-            {categories.map((cat) => (
+            {categoryNames.map((cat) => (
               <TabsTrigger key={cat} value={cat}>
                 {getCategoryName(cat)}
               </TabsTrigger>
@@ -394,15 +341,15 @@ const loadProducts = async () => {
           <TabsContent value={selectedCategory} className="mt-6">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="flex flex-col">
+                <Card key={product.product_id} className="flex flex-col">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <Badge variant="secondary">
-                        {getCategoryName(product.category)}
+                        {product.category_id || 'Sin categoría'}
                       </Badge>
-                      {product.stock < 10 && (
-                        <Badge variant={product.stock < 5 ? 'destructive' : 'secondary'}>
-                          Stock: {product.stock}
+                      {product.stock_quantity < 10 && (
+                        <Badge variant={product.stock_quantity < 5 ? 'destructive' : 'secondary'}>
+                          Stock: {product.stock_quantity}
                         </Badge>
                       )}
                     </div>
@@ -413,7 +360,7 @@ const loadProducts = async () => {
                   </CardHeader>
                   <CardContent className="flex-1">
                     <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(product.price)}
+                      {formatCurrency(parseFloat(product.price))}
                     </p>
                   </CardContent>
                   <CardFooter className="flex gap-2">
@@ -431,7 +378,7 @@ const loadProducts = async () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteProduct(product.id)}
+                          onClick={() => handleDeleteProduct(product.product_id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -440,10 +387,10 @@ const loadProducts = async () => {
                       <Button
                         className="w-full"
                         onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0}
+                        disabled={product.stock_quantity === 0}
                       >
                         <ShoppingCart className="mr-2 h-4 w-4" />
-                        {product.stock === 0 ? 'Agotado' : 'Agregar'}
+                        {product.stock_quantity === 0 ? 'Agotado' : 'Agregar'}
                       </Button>
                     )}
                   </CardFooter>

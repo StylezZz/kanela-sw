@@ -29,21 +29,24 @@ export default function DashboardPage() {
   const adminStats = useMemo(() => {
     const today = new Date().toDateString();
     const todayOrders = orders.filter(
-      (o) => new Date(o.createdAt).toDateString() === today
+      (o) => new Date(o.created_at).toDateString() === today
     );
 
     const totalSales = orders
-      .filter((o) => o.status === 'completed')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status === 'delivered')
+      .reduce((sum, o) => sum + parseFloat(o.total_amount), 0);
 
     const todaySales = todayOrders
-      .filter((o) => o.status === 'completed')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status === 'delivered')
+      .reduce((sum, o) => sum + parseFloat(o.total_amount), 0);
 
     const pendingOrders = orders.filter((o) => o.status === 'pending').length;
 
     const totalDebt = users.reduce(
-      (sum, u) => sum + (u.balance < 0 ? Math.abs(u.balance) : 0),
+      (sum, u) => {
+        const balance = parseFloat(u.current_balance);
+        return sum + (balance < 0 ? Math.abs(balance) : 0);
+      },
       0
     );
 
@@ -59,7 +62,7 @@ export default function DashboardPage() {
   // Pedidos recientes para admin
   const recentOrders = useMemo(() => {
     return orders
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
   }, [orders]);
 
@@ -77,7 +80,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">
-              Bienvenido de vuelta, {user?.name}
+              Bienvenido de vuelta, {user?.full_name}
             </p>
           </div>
 
@@ -125,14 +128,14 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     {recentOrders.map((order) => (
                       <div
-                        key={order.id}
+                        key={order.order_id}
                         className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
                       >
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">{order.userName}</p>
+                          <p className="text-sm font-medium">{order.user?.full_name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {order.items.length} items •{' '}
-                            {new Date(order.createdAt).toLocaleString('es-PE', {
+                            {order.items?.length || 0} items •{' '}
+                            {new Date(order.created_at).toLocaleString('es-PE', {
                               dateStyle: 'short',
                               timeStyle: 'short',
                             })}
@@ -140,11 +143,11 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-bold">
-                            {formatCurrency(order.total)}
+                            {formatCurrency(parseFloat(order.total_amount))}
                           </p>
                           <Badge
                             variant={
-                              order.status === 'completed'
+                              order.status === 'delivered'
                                 ? 'default'
                                 : order.status === 'pending'
                                 ? 'secondary'
@@ -152,8 +155,8 @@ export default function DashboardPage() {
                             }
                           >
                             {order.status === 'pending' && 'Pendiente'}
-                            {order.status === 'processing' && 'En proceso'}
-                            {order.status === 'completed' && 'Completado'}
+                            {order.status === 'preparing' && 'En proceso'}
+                            {order.status === 'delivered' && 'Completado'}
                             {order.status === 'cancelled' && 'Cancelado'}
                           </Badge>
                         </div>
@@ -177,30 +180,30 @@ export default function DashboardPage() {
                 <CardTitle>Stock Bajo</CardTitle>
               </CardHeader>
               <CardContent>
-                {products.filter((p) => p.stock < 10).length === 0 ? (
+                {products.filter((p) => p.stock_quantity < 10).length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Todos los productos tienen stock adecuado
                   </p>
                 ) : (
                   <div className="space-y-4">
                     {products
-                      .filter((p) => p.stock < 10)
+                      .filter((p) => p.stock_quantity < 10)
                       .slice(0, 5)
                       .map((product) => (
                         <div
-                          key={product.id}
+                          key={product.product_id}
                           className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
                         >
                           <div className="space-y-1">
                             <p className="text-sm font-medium">{product.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatCurrency(product.price)}
+                              {formatCurrency(parseFloat(product.price))}
                             </p>
                           </div>
                           <Badge
-                            variant={product.stock < 5 ? 'destructive' : 'secondary'}
+                            variant={product.stock_quantity < 5 ? 'destructive' : 'secondary'}
                           >
-                            {product.stock} en stock
+                            {product.stock_quantity} en stock
                           </Badge>
                         </div>
                       ))}
@@ -226,7 +229,10 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Bienvenido, {user?.data.user.full_name} 👋</h1>
+          <h1 className="text-3xl font-bold">Bienvenido, {user?.full_name}</h1>
+          <p className="text-muted-foreground">
+            Cliente de la cafetería
+          </p>
         </div>
 
         {/* Balance del usuario */}
@@ -238,10 +244,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-3xl font-bold">
-                  {formatCurrency(user?.balance || 0)}
+                  {formatCurrency(parseFloat(user?.current_balance || '0'))}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {(user?.balance || 0) < 0
+                  {parseFloat(user?.current_balance || '0') < 0
                     ? 'Deuda pendiente'
                     : 'Saldo disponible'}
                 </p>

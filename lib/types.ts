@@ -8,12 +8,34 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  type: UserType;
-  grade?: string; // Para estudiantes
-  section?: string; // Para estudiantes
-  balance: number; // Balance de cuenta (fiado)
-  avatar?: string;
-  createdAt: Date;
+  account_status: AccountStatus;
+  suspension_reason?: string;
+  suspended_at?: string;
+  has_credit_account: boolean;
+  credit_limit: string;
+  current_balance: string;
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
+}
+
+export interface CreateUserDTO {
+  email: string;
+  password: string;
+  full_name: string;
+  phone?: string;
+  role: UserRole;
+  has_credit_account?: boolean;
+  credit_limit?: number;
+}
+
+export interface UpdateUserDTO {
+  full_name?: string;
+  phone?: string;
+  account_status?: AccountStatus;
+  suspension_reason?: string;
+  has_credit_account?: boolean;
+  credit_limit?: number;
 }
 
 // Categorías de productos
@@ -29,32 +51,27 @@ export type ProductCategory =
 export interface Product {
   id: string;
   name: string;
-  description: string;
-  price: number;
-  category: ProductCategory;
-  image?: string;
-  stock: number;
-  available: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  description?: string;
+  price: string;
+  image_url?: string;
+  thumbnail_url?: string;
+  stock_quantity: number;
+  min_stock_level: number;
+  is_available: boolean;
+  preparation_time: number;
+  calories?: number;
+  allergens?: string[];
+  created_at: string;
+  updated_at: string;
+  // Join fields
+  category_name?: string;
+  category?: Category;
 }
 
-// Días de la semana
-export type WeekDay =
-  | 'lunes'
-  | 'martes'
-  | 'miercoles'
-  | 'jueves'
-  | 'viernes';
-
-// Menú semanal
-export interface WeeklyMenu {
-  id: string;
-  day: WeekDay;
-  mainDish: string;
-  side: string;
-  drink: string;
-  dessert?: string;
+export interface CreateProductDTO {
+  category_id: string;
+  name: string;
+  description?: string;
   price: number;
   week: string; // Formato: "2025-W01"
   reservations: number;
@@ -87,43 +104,103 @@ export type OrderStatus =
   | 'completed'
   | 'cancelled';
 
-// Item de orden
+export type PaymentMethod = 'cash' | 'card' | 'credit';
+export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';
+
+export interface Order {
+  order_id: string;
+  user_id: string;
+  order_number: string;
+  total_amount: string;
+  status: OrderStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
+  is_credit_order: boolean;
+  credit_paid_amount: string;
+  estimated_ready_time?: string;
+  confirmed_at?: string;
+  ready_at?: string;
+  delivered_at?: string;
+  notes?: string;
+  cancellation_reason?: string;
+  qr_code?: string;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  user?: User;
+  items?: OrderItem[];
+}
+
+export interface CreateOrderDTO {
+  user_id: string;
+  items: CreateOrderItemDTO[];
+  payment_method: PaymentMethod;
+  notes?: string;
+}
+
+// ==================== ITEMS DE ORDEN ====================
 export interface OrderItem {
   productId: string;
   productName: string;
   quantity: number;
-  price: number;
-  subtotal: number;
+  unit_price: string;
+  subtotal: string;
+  customizations?: string;
+  created_at: string;
+  // Joins
+  product?: Product;
 }
 
-// Orden
-export interface Order {
-  id: string;
-  userId: string;
-  userName: string;
-  items: OrderItem[];
-  total: number;
-  paymentMethod: PaymentMethod;
-  status: OrderStatus;
+export interface CreateOrderItemDTO {
+  product_id: string;
+  quantity: number;
+  customizations?: string;
+}
+
+// ==================== PAGOS DE CRÉDITO ====================
+export interface CreditPayment {
+  payment_id: string;
+  user_id: string;
+  order_id?: string;
+  amount: string;
+  payment_method: 'cash' | 'card' | 'transfer';
+  balance_before: string;
+  balance_after: string;
+  transaction_reference?: string;
   notes?: string;
-  createdAt: Date;
-  completedAt?: Date;
+  recorded_by?: string;
+  created_at: string;
+  // Joins
+  user?: User;
+  order?: Order;
+  recorded_by_user?: User;
 }
 
-// Tipo de transacción
-export type TransactionType =
-  | 'compra'
-  | 'pago'
-  | 'fiado'
-  | 'ajuste';
-
-// Transacción (para historial de cuenta)
-export interface Transaction {
-  id: string;
-  userId: string;
-  type: TransactionType;
+export interface CreateCreditPaymentDTO {
+  user_id: string;
+  order_id?: string;
   amount: number;
-  balance: number; // Balance después de la transacción
+  payment_method: 'cash' | 'card' | 'transfer';
+  transaction_reference?: string;
+  notes?: string;
+}
+
+// ==================== HISTORIAL DE CRÉDITO ====================
+export type CreditTransactionType =
+  | 'charge'
+  | 'payment'
+  | 'adjustment'
+  | 'limit_change';
+
+export interface CreditHistory {
+  history_id: string;
+  user_id: string;
+  transaction_type: CreditTransactionType;
+  amount: string;
+  balance_before: string;
+  balance_after: string;
+  order_id?: string;
+  payment_id?: string;
   description: string;
   orderId?: string;
   paymentMethod?: PaymentMethod;
@@ -159,4 +236,78 @@ export interface CartItem {
 export interface Cart {
   items: CartItem[];
   total: number;
+}
+
+// ==================== RESPONSES DE API ====================
+// Estructura específica de tu backend
+export interface BackendResponse<T = any> {
+  success: boolean;
+  token?: string; // Solo para login
+  count?: number; // Para listados
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface LoginDTO {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  user: User;
+  token: string;
+}
+
+// ==================== ESTADÍSTICAS ====================
+export interface DashboardStats {
+  totalSales: number;
+  todaySales: number;
+  pendingOrders: number;
+  totalCustomers: number;
+  totalCreditDebt: number;
+  lowStockProducts: number;
+  topProducts: {
+    product_id: string;
+    product_name: string;
+    total_quantity: number;
+    total_revenue: number;
+  }[];
+}
+
+// ==================== FRONTEND-ONLY TYPES (localStorage) ====================
+export type WeekDay = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes';
+
+export interface WeeklyMenu {
+  id: string;
+  day: WeekDay;
+  mainDish: string;
+  side?: string;
+  drink?: string;
+  dessert?: string;
+  price: number;
+  week: string;
+  reservations: number;
+  available: boolean;
+}
+
+export interface MenuReservation {
+  id: string;
+  userId: string;
+  menuId: string;
+  date: Date;
+  status: 'confirmed' | 'cancelled';
+  createdAt: Date;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: 'compra' | 'pago' | 'fiado' | 'ajuste';
+  amount: number;
+  balance: number;
+  description: string;
+  paymentMethod?: string;
+  createdBy: string;
+  createdAt: Date;
 }

@@ -45,16 +45,14 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
   const { addOrder, addTransaction, updateUserBalance } = useApp();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const paymentMethods: PaymentMethod[] = [
-    'efectivo',
-    'yape',
-    'plin',
-    'transferencia',
-    'fiado',
+    'cash',
+    'card',
+    'credit',
   ];
 
   const handleIncrement = (productId: string, currentQuantity: number) => {
@@ -75,46 +73,54 @@ export default function CartPage() {
     try {
       // Crear la orden
       addOrder({
-        userId: user.id,
-        userName: user.name,
-        items: cart.items.map((item) => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price,
-          subtotal: item.product.price * item.quantity,
-        })),
-        total: cart.total,
-        paymentMethod,
+        user_id: user.user_id,
+        order_number: '', // Se generará automáticamente
+        total_amount: cart.total.toString(),
         status: 'pending',
+        payment_method: paymentMethod,
+        payment_status: paymentMethod === 'credit' ? 'pending' : 'paid',
+        is_credit_order: paymentMethod === 'credit',
+        credit_paid_amount: '0.00',
         notes,
-      });
+        updated_at: new Date().toISOString(),
+        items: cart.items.map((item) => ({
+          order_item_id: '',
+          order_id: '',
+          product_id: item.product.product_id,
+          product_name: item.product.name,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          subtotal: (parseFloat(item.product.price) * item.quantity).toString(),
+          created_at: new Date().toISOString(),
+        })),
+      } as any);
 
       // Si es fiado, actualizar el balance del usuario
-      if (paymentMethod === 'fiado') {
-        const newBalance = user.balance - cart.total;
-        updateUserBalance(user.id, -cart.total);
+      if (paymentMethod === 'credit') {
+        const currentBalance = parseFloat(user.current_balance);
+        const newBalance = currentBalance - cart.total;
+        updateUserBalance(user.user_id, -cart.total);
 
         // Crear transacción
         addTransaction({
-          userId: user.id,
+          userId: user.user_id,
           type: 'fiado',
           amount: -cart.total,
           balance: newBalance,
           description: `Compra a crédito - ${cart.items.length} productos`,
-          paymentMethod: 'fiado',
-          createdBy: user.id,
+          paymentMethod: 'credit',
+          createdBy: user.user_id,
         });
       } else {
         // Crear transacción para otros métodos de pago
         addTransaction({
-          userId: user.id,
+          userId: user.user_id,
           type: 'compra',
           amount: -cart.total,
-          balance: user.balance,
+          balance: parseFloat(user.current_balance),
           description: `Compra - ${cart.items.length} productos`,
           paymentMethod,
-          createdBy: user.id,
+          createdBy: user.user_id,
         });
       }
 
@@ -162,7 +168,7 @@ export default function CartPage() {
           {/* Lista de productos */}
           <div className="lg:col-span-2 space-y-4">
             {cart.items.map((item) => (
-              <Card key={item.product.id}>
+              <Card key={item.product.product_id}>
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <div className="flex-1">
@@ -173,14 +179,14 @@ export default function CartPage() {
                         {item.product.description}
                       </p>
                       <p className="text-lg font-bold text-primary mt-2">
-                        {formatCurrency(item.product.price)} c/u
+                        {formatCurrency(parseFloat(item.product.price))} c/u
                       </p>
                     </div>
                     <div className="flex flex-col items-end justify-between">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeFromCart(item.product.id)}
+                        onClick={() => removeFromCart(item.product.product_id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -189,7 +195,7 @@ export default function CartPage() {
                           variant="outline"
                           size="icon"
                           onClick={() =>
-                            handleDecrement(item.product.id, item.quantity)
+                            handleDecrement(item.product.product_id, item.quantity)
                           }
                         >
                           <Minus className="h-4 w-4" />
@@ -201,14 +207,14 @@ export default function CartPage() {
                           variant="outline"
                           size="icon"
                           onClick={() =>
-                            handleIncrement(item.product.id, item.quantity)
+                            handleIncrement(item.product.product_id, item.quantity)
                           }
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
                       <p className="text-xl font-bold">
-                        {formatCurrency(item.product.price * item.quantity)}
+                        {formatCurrency(parseFloat(item.product.price) * item.quantity)}
                       </p>
                     </div>
                   </div>
@@ -227,14 +233,14 @@ export default function CartPage() {
                 <div className="space-y-2">
                   {cart.items.map((item) => (
                     <div
-                      key={item.product.id}
+                      key={item.product.product_id}
                       className="flex justify-between text-sm"
                     >
                       <span>
                         {item.product.name} x{item.quantity}
                       </span>
                       <span>
-                        {formatCurrency(item.product.price * item.quantity)}
+                        {formatCurrency(parseFloat(item.product.price) * item.quantity)}
                       </span>
                     </div>
                   ))}
@@ -246,10 +252,10 @@ export default function CartPage() {
                     {formatCurrency(cart.total)}
                   </span>
                 </div>
-                {user && user.balance < 0 && (
+                {user && parseFloat(user.current_balance) < 0 && (
                   <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <p className="text-sm font-medium text-orange-900">
-                      Deuda actual: {formatCurrency(user.balance)}
+                      Deuda actual: {formatCurrency(parseFloat(user.current_balance))}
                     </p>
                   </div>
                 )}
@@ -304,7 +310,7 @@ export default function CartPage() {
               </Select>
             </div>
 
-            {paymentMethod === 'fiado' && (
+            {paymentMethod === 'credit' && (
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm font-medium text-yellow-900 mb-2">
                   Compra a Crédito
@@ -312,13 +318,13 @@ export default function CartPage() {
                 <p className="text-sm text-yellow-800">
                   Tu nuevo balance será:{' '}
                   <span className="font-bold">
-                    {formatCurrency((user?.balance || 0) - cart.total)}
+                    {formatCurrency(parseFloat(user?.current_balance || '0') - cart.total)}
                   </span>
                 </p>
               </div>
             )}
 
-            {(paymentMethod === 'yape' || paymentMethod === 'plin') && (
+            {paymentMethod === 'card' && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-900">
                   Por favor, realiza el pago de{' '}

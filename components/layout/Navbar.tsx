@@ -100,17 +100,15 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
               <Button variant="ghost" className="relative h-10 gap-2">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-white">
-                    {user ? getInitials() : 'U'}
+                    {user ? getInitials(user.full_name) : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">{user?.data.user.full_name}</span>
+                  <span className="text-sm font-medium">{user?.full_name}</span>
                   <span className="text-xs text-muted-foreground">
                     {user?.data.user.role === 'admin'
                       ? 'Administrador'
-                      : user?.data.user.role === 'customer'
-                      ? 'Customer'
-                      : 'Usuario'}
+                      : 'Cliente'}
                   </span>
                 </div>
               </Button>
@@ -119,7 +117,7 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.name}
+                    {user?.full_name}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
@@ -133,7 +131,7 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
                     <Wallet className="mr-2 h-4 w-4" />
                     <span>Mi Cuenta</span>
                     <span className="ml-auto text-xs">
-                      {formatCurrency(user?.balance || 0)}
+                      {formatCurrency(parseFloat(user?.current_balance || '0'))}
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/profile')}>
