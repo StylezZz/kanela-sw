@@ -1,4 +1,5 @@
-import { API_CONFIG, getAuthHeaders, setAuthToken, removeAuthToken } from './config';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { API_CONFIG } from './config';
 import type {
   User,
   CreateUserDTO,
@@ -22,24 +23,44 @@ import type {
   PaginatedResponse,
 } from './types';
 
-// ==================== HELPER FUNCTIONS ====================
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(API_CONFIG.TOKEN_KEY);
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+function setAuthToken(token: string): void {
+  localStorage.setItem(API_CONFIG.TOKEN_KEY, token);
+}
+
+function removeAuthToken(): void {
+  localStorage.removeItem(API_CONFIG.TOKEN_KEY);
+}
 
 async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
   const contentType = response.headers.get('content-type');
   const isJson = contentType?.includes('application/json');
 
   if (!response.ok) {
-    const errorData = isJson ? await response.json() : { error: response.statusText };
-    throw new Error(errorData.error || errorData.message || 'Error en la petición');
+    let errorMessage = `Error ${response.status}: ${response.statusText}`;
+    
+    if (isJson) {
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
+    }
+    
+    throw new Error(errorMessage);
   }
 
   if (isJson) {
     const data = await response.json();
-    return {
-      success: true,
-      data: data.data || data,
-      message: data.message,
-    };
+    return { success: true, data };
   }
 
   return { success: true } as ApiResponse<T>;
@@ -60,11 +81,33 @@ async function apiRequest<T>(
   };
 
   try {
+    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+    if (options.body) {
+      console.log('📦 Body:', options.body);
+    }
+    
     const response = await fetch(url, config);
+    
+    console.log(`✅ Response Status: ${response.status}`);
+    
+    // Manejar token expirado
+    if (response.status === 401) {
+      removeAuthToken();
+      window.dispatchEvent(new Event('unauthorized'));
+      throw new Error('Sesión expirada');
+    }
+    
     return await handleResponse<T>(response);
   } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+    console.error('❌ API Error:', error);
+    
+    // Si el error es un objeto Error, lanzarlo tal cual
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    // Si es otro tipo de error, convertirlo a string
+    throw new Error(String(error));
   }
 }
 
@@ -76,16 +119,47 @@ export const authApi = {
    * POST /auth/login
    */
   login: async (credentials: LoginDTO): Promise<LoginResponse> => {
-    const response = await apiRequest<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
+    try {
+      const response = await apiRequest<any>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      
+      console.log('📥 Respuesta completa del backend:', response);
 
-    if (response.data?.token) {
-      setAuthToken(response.data.token);
+      // Tu backend retorna { success, token, data: { user } }
+      // Necesitamos adaptarlo al formato esperado
+      const backendData = response.data;
+      
+      if (!backendData) {
+        throw new Error('Respuesta del servidor inválida');
+      }
+
+      // Extraer token y user según el formato de tu backend
+      const token = backendData.token;
+      const user = backendData.data?.user;
+
+      if (!token) {
+        throw new Error('El servidor no retornó un token');
+      }
+
+      if (!user) {
+        throw new Error('El servidor no retornó datos del usuario');
+      }
+
+      // Guardar token
+      setAuthToken(token);
+      console.log('✅ Token guardado exitosamente');
+
+      // Retornar en el formato que espera el AuthContext
+      return {
+        token,
+        user,
+      };
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      throw error;
     }
-
-    return response.data!;
   },
 
   /**
@@ -93,17 +167,27 @@ export const authApi = {
    * POST /auth/logout
    */
   logout: async (): Promise<void> => {
-    await apiRequest('/auth/logout', { method: 'POST' });
-    removeAuthToken();
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Error en logout:', error);
+    } finally {
+      removeAuthToken();
+    }
   },
 
   /**
    * Obtener usuario actual
    * GET /auth/me
    */
-  getCurrentUser: async (): Promise<User> => {
+  getCurrentUser: async () => {
     const response = await apiRequest<User>('/auth/me');
-    return response.data!;
+    
+    if (!response.data) {
+      throw new Error('No se pudo obtener el usuario actual');
+    }
+    
+    return response.data;
   },
 
   /**
@@ -283,8 +367,9 @@ export const productsApi = {
     if (params?.low_stock) queryParams.append('low_stock', 'true');
 
     const response = await apiRequest<PaginatedResponse<Product>>(
-      `/products?${queryParams}`
+      `/products`
     );
+    console.log('📦 Productos obtenidos:', response);
     return response.data!;
   },
 

@@ -43,11 +43,6 @@ export function LoginForm() {
     }
   };
 
-  const quickLogin = (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('demo');
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100 p-4">
       <Card className="w-full max-w-md shadow-xl">
@@ -103,64 +98,6 @@ export function LoginForm() {
               )}
             </Button>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Acceso rápido (demo)
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => quickLogin('admin@colegio.com')}
-                disabled={isLoading}
-              >
-                Administrador
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => quickLogin('maria@estudiante.com')}
-                disabled={isLoading}
-              >
-                Estudiante
-              </Button>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => quickLogin('pedro@estudiante.com')}
-                disabled={isLoading}
-              >
-                Primaria
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => quickLogin('ana@profesor.com')}
-                disabled={isLoading}
-              >
-                Profesor
-              </Button>
-            </div>
-          </div>
-
-          <p className="mt-4 text-xs text-center text-muted-foreground">
-            En modo demo, usa cualquier contraseña con los correos de ejemplo
-          </p>
         </CardContent>
       </Card>
     </div>

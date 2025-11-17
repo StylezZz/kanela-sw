@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useApp } from '@/contexts/AppContext';
 import { useCart } from '@/contexts/CartContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -35,37 +35,106 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ShoppingCart, Edit, Trash2, Search } from 'lucide-react';
-import { formatCurrency, getCategoryName } from '@/lib/data';
-import { Product, ProductCategory } from '@/lib/types';
+import { Plus, ShoppingCart, Edit, Trash2, Search, Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/data';
+import { Product } from '@/lib/types';
 import { toast } from 'sonner';
+import api from '@/lib/api';
+
+const getCategoryName = (category: string) => {
+  const names: Record<string, string> = {
+    almuerzos: 'Almuerzos',
+    bebidas: 'Bebidas',
+    snacks: 'Snacks',
+    postres: 'Postres',
+    utiles: 'Útiles',
+    otros: 'Otros',
+  };
+  return names[category] || category;
+};
 
 export default function ProductsPage() {
   const { isAdmin } = useAuth();
-  const { products, addProduct, updateProduct, deleteProduct } = useApp();
   const { addToCart } = useCart();
+  
+  // Estados
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Estado del formulario
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
-    category: 'almuerzos' as ProductCategory,
+    category: 'almuerzos',
     stock: '',
   });
+   
 
-  const categories: ProductCategory[] = [
-    'almuerzos',
-    'bebidas',
-    'snacks',
-    'postres',
-    'utiles',
-    'otros',
-  ];
+  // Mapeo de categorías del backend al frontend
+const categoryMapping: Record<string, string> = {
+  'Almuerzos': 'almuerzos',
+  'Bebidas Calientes': 'bebidas',
+  'Bebidas Frías': 'bebidas',
+  'Snacks': 'snacks',
+  'Postres': 'postres',
+  'Sandwiches': 'snacks', // O crea una categoría nueva
+  'Útiles': 'utiles',
+};
+
+// Mapeo inverso para filtrar
+const categoryToBackend: Record<string, string[]> = {
+  'almuerzos': ['Almuerzos'],
+  'bebidas': ['Bebidas Calientes', 'Bebidas Frías'],
+  'snacks': ['Snacks', 'Sandwiches'],
+  'postres': ['Postres'],
+  'utiles': ['Útiles'],
+  'otros': [], // Cualquier categoría no mapeada
+};
+
+const loadProducts = async () => {
+  try {
+    setIsLoading(true);
+    const params: any = {
+      available_only: !isAdmin,
+    };
+
+    // No enviar filtro de categoría al backend, filtraremos en el frontend
+    // porque las categorías del backend son diferentes
+
+    const response = await api.products.getAll(params || {});
+    
+    const backendProducts = response.data?.products || [];
+    
+    // Mapear los productos del backend al formato del frontend
+    const mappedProducts: Product[] = backendProducts.map((p: any) => ({
+      id: p.product_id,
+      name: p.name,
+      description: p.description || '',
+      price: parseFloat(p.price),
+      category: categoryMapping[p.category_name] || 'otros',
+      categoryName: p.category_name, // Guardar nombre original
+      stock: p.stock_quantity,
+      available: p.is_available,
+      imageUrl: p.image_url,
+      preparationTime: p.preparation_time,
+      calories: p.calories,
+      allergens: p.allergens,
+    }));
+    
+    setProducts(mappedProducts);
+  } catch (error) {
+    console.error('Error cargando productos:', error);
+    toast.error('Error al cargar productos');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name
@@ -81,7 +150,7 @@ export default function ProductsPage() {
       setEditingProduct(product);
       setFormData({
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         price: product.price.toString(),
         category: product.category,
         stock: product.stock.toString(),
@@ -99,41 +168,57 @@ export default function ProductsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = async () => {
     if (!formData.name || !formData.price || !formData.stock) {
       toast.error('Por favor completa todos los campos requeridos');
       return;
     }
 
-    if (editingProduct) {
-      updateProduct(editingProduct.id, {
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        stock: parseInt(formData.stock),
-      });
-      toast.success('Producto actualizado correctamente');
-    } else {
-      addProduct({
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        stock: parseInt(formData.stock),
-        available: true,
-      });
-      toast.success('Producto agregado correctamente');
-    }
+    try {
+      setIsSaving(true);
 
-    setIsDialogOpen(false);
-    setEditingProduct(null);
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        category: formData.category,
+        stock: parseInt(formData.stock),
+      };
+
+      if (editingProduct) {
+        await api.products.update(editingProduct.id, productData);
+        toast.success('Producto actualizado correctamente');
+      } else {
+        await api.products.create({
+          ...productData,
+          available: true,
+        });
+        toast.success('Producto agregado correctamente');
+      }
+
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      loadProducts(); // Recargar lista
+    } catch (error) {
+      console.error('Error guardando producto:', error);
+      toast.error('Error al guardar el producto');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteProduct = (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este producto?')) {
-      deleteProduct(id);
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este producto?')) {
+      return;
+    }
+
+    try {
+      await api.products.delete(id);
       toast.success('Producto eliminado');
+      loadProducts(); // Recargar lista
+    } catch (error) {
+      console.error('Error eliminando producto:', error);
+      toast.error('Error al eliminar el producto');
     }
   };
 
@@ -141,6 +226,16 @@ export default function ProductsPage() {
     addToCart(product);
     toast.success(`${product.name} agregado al carrito`);
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -181,6 +276,7 @@ export default function ProductsPage() {
                         setFormData({ ...formData, name: e.target.value })
                       }
                       placeholder="Ej: Hamburguesa Clásica"
+                      disabled={isSaving}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -193,6 +289,7 @@ export default function ProductsPage() {
                       }
                       placeholder="Descripción del producto"
                       rows={3}
+                      disabled={isSaving}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -207,6 +304,7 @@ export default function ProductsPage() {
                           setFormData({ ...formData, price: e.target.value })
                         }
                         placeholder="0.00"
+                        disabled={isSaving}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -219,6 +317,7 @@ export default function ProductsPage() {
                           setFormData({ ...formData, stock: e.target.value })
                         }
                         placeholder="0"
+                        disabled={isSaving}
                       />
                     </div>
                   </div>
@@ -227,8 +326,9 @@ export default function ProductsPage() {
                     <Select
                       value={formData.category}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, category: value as ProductCategory })
+                        setFormData({ ...formData, category: value })
                       }
+                      disabled={isSaving}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -244,11 +344,22 @@ export default function ProductsPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isSaving}
+                  >
                     Cancelar
                   </Button>
-                  <Button onClick={handleSaveProduct}>
-                    {editingProduct ? 'Guardar cambios' : 'Crear producto'}
+                  <Button onClick={handleSaveProduct} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      editingProduct ? 'Guardar cambios' : 'Crear producto'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>

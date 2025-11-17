@@ -39,13 +39,15 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
     router.push('/login');
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const getInitials = () => {
+    console.log('User name:', user?.data.user.full_name);
+    if (!user?.data.user.full_name) return 'U';
+    const names = user.data.user.full_name.split(' ');
+    const initials =
+      names.length === 1
+        ? names[0].charAt(0)
+        : names[0].charAt(0) + names[names.length - 1].charAt(0);
+    return initials.toUpperCase();
   };
 
   return (
@@ -98,17 +100,17 @@ export function Navbar({ onMenuClick, showCart = true }: NavbarProps) {
               <Button variant="ghost" className="relative h-10 gap-2">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-white">
-                    {user ? getInitials(user.name) : 'U'}
+                    {user ? getInitials() : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-sm font-medium">{user?.data.user.full_name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {user?.role === 'admin'
+                    {user?.data.user.role === 'admin'
                       ? 'Administrador'
-                      : user?.role === 'teacher'
-                      ? 'Profesor'
-                      : `Estudiante - ${user?.type}`}
+                      : user?.data.user.role === 'customer'
+                      ? 'Customer'
+                      : 'Usuario'}
                   </span>
                 </div>
               </Button>

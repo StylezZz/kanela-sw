@@ -10,6 +10,8 @@ export const API_CONFIG = {
   HEADERS: {
     'Content-Type': 'application/json',
   },
+
+  TOKEN_KEY: 'authplexer123$!@#',
 };
 
 // Helper para obtener el token del localStorage
