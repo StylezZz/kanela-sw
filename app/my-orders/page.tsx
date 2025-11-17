@@ -23,17 +23,17 @@ export default function MyOrdersPage() {
   const myOrders = useMemo(() => {
     if (!user) return [];
     return orders
-      .filter((o) => o.userId === user.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .filter((o) => o.user_id === user.user_id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [orders, user]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
         return <Clock className="h-4 w-4" />;
-      case 'processing':
+      case 'preparing':
         return <Clock className="h-4 w-4" />;
-      case 'completed':
+      case 'delivered':
         return <CheckCircle2 className="h-4 w-4" />;
       case 'cancelled':
         return <XCircle className="h-4 w-4" />;
@@ -46,9 +46,9 @@ export default function MyOrdersPage() {
     switch (status) {
       case 'pending':
         return 'secondary';
-      case 'processing':
+      case 'preparing':
         return 'default';
-      case 'completed':
+      case 'delivered':
         return 'outline';
       case 'cancelled':
         return 'destructive';
@@ -61,9 +61,9 @@ export default function MyOrdersPage() {
     switch (status) {
       case 'pending':
         return 'Pendiente';
-      case 'processing':
+      case 'preparing':
         return 'En Proceso';
-      case 'completed':
+      case 'delivered':
         return 'Completado';
       case 'cancelled':
         return 'Cancelado';
@@ -93,16 +93,16 @@ export default function MyOrdersPage() {
         ) : (
           <div className="space-y-4">
             {myOrders.map((order) => (
-              <Card key={order.id}>
+              <Card key={order.order_id}>
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <ShoppingBag className="h-5 w-5" />
-                        Pedido #{order.id.slice(-8)}
+                        Pedido #{order.order_id.slice(-8)}
                       </CardTitle>
                       <CardDescription>
-                        {new Date(order.createdAt).toLocaleString('es-PE', {
+                        {new Date(order.created_at).toLocaleString('es-PE', {
                           dateStyle: 'long',
                           timeStyle: 'short',
                         })}
@@ -114,7 +114,7 @@ export default function MyOrdersPage() {
                         <span className="ml-1">{getStatusText(order.status)}</span>
                       </Badge>
                       <Badge variant="outline">
-                        {getPaymentMethodName(order.paymentMethod)}
+                        {getPaymentMethodName(order.payment_method)}
                       </Badge>
                     </div>
                   </div>
@@ -123,20 +123,20 @@ export default function MyOrdersPage() {
                   <div className="space-y-4">
                     {/* Items */}
                     <div className="space-y-2">
-                      {order.items.map((item, index) => (
+                      {order.items?.map((item, index) => (
                         <div key={index}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <p className="font-medium">{item.productName}</p>
+                              <p className="font-medium">{item.product_name}</p>
                               <p className="text-sm text-muted-foreground">
-                                {item.quantity} x {formatCurrency(item.price)}
+                                {item.quantity} x {formatCurrency(parseFloat(item.unit_price))}
                               </p>
                             </div>
                             <p className="font-semibold">
-                              {formatCurrency(item.subtotal)}
+                              {formatCurrency(parseFloat(item.subtotal))}
                             </p>
                           </div>
-                          {index < order.items.length - 1 && (
+                          {order.items && index < order.items.length - 1 && (
                             <Separator className="my-2" />
                           )}
                         </div>
@@ -161,15 +161,15 @@ export default function MyOrdersPage() {
                     <div className="flex justify-between items-center">
                       <p className="text-lg font-semibold">Total</p>
                       <p className="text-2xl font-bold text-primary">
-                        {formatCurrency(order.total)}
+                        {formatCurrency(parseFloat(order.total_amount))}
                       </p>
                     </div>
 
                     {/* Fecha de completado */}
-                    {order.completedAt && (
+                    {order.delivered_at && (
                       <div className="text-sm text-muted-foreground">
                         Completado el{' '}
-                        {new Date(order.completedAt).toLocaleString('es-PE', {
+                        {new Date(order.delivered_at).toLocaleString('es-PE', {
                           dateStyle: 'short',
                           timeStyle: 'short',
                         })}

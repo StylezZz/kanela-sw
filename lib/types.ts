@@ -12,8 +12,8 @@ export interface User {
   suspension_reason?: string;
   suspended_at?: string;
   has_credit_account: boolean;
-  credit_limit: number;
-  current_balance: number;
+  credit_limit: string;
+  current_balance: string;
   created_at: string;
   updated_at: string;
   last_login?: string;
@@ -64,7 +64,7 @@ export interface Product {
   category_id: string;
   name: string;
   description?: string;
-  price: number;
+  price: string;
   image_url?: string;
   thumbnail_url?: string;
   stock_quantity: number;
@@ -75,7 +75,8 @@ export interface Product {
   allergens?: string[];
   created_at: string;
   updated_at: string;
-  // Joins
+  // Join fields
+  category_name?: string;
   category?: Category;
 }
 
@@ -125,12 +126,12 @@ export interface Order {
   order_id: string;
   user_id: string;
   order_number: string;
-  total_amount: number;
+  total_amount: string;
   status: OrderStatus;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   is_credit_order: boolean;
-  credit_paid_amount: number;
+  credit_paid_amount: string;
   estimated_ready_time?: string;
   confirmed_at?: string;
   ready_at?: string;
@@ -159,8 +160,8 @@ export interface OrderItem {
   product_id: string;
   product_name: string;
   quantity: number;
-  unit_price: number;
-  subtotal: number;
+  unit_price: string;
+  subtotal: string;
   customizations?: string;
   created_at: string;
   // Joins
@@ -178,10 +179,10 @@ export interface CreditPayment {
   payment_id: string;
   user_id: string;
   order_id?: string;
-  amount: number;
+  amount: string;
   payment_method: 'cash' | 'card' | 'transfer';
-  balance_before: number;
-  balance_after: number;
+  balance_before: string;
+  balance_after: string;
   transaction_reference?: string;
   notes?: string;
   recorded_by?: string;
@@ -212,9 +213,9 @@ export interface CreditHistory {
   history_id: string;
   user_id: string;
   transaction_type: CreditTransactionType;
-  amount: number;
-  balance_before: number;
-  balance_after: number;
+  amount: string;
+  balance_before: string;
+  balance_after: string;
   order_id?: string;
   payment_id?: string;
   description: string;
@@ -299,25 +300,16 @@ export interface Cart {
 }
 
 // ==================== RESPONSES DE API ====================
-export interface ApiResponse<T> {
+// Estructura específica de tu backend
+export interface BackendResponse<T = any> {
   success: boolean;
+  token?: string; // Solo para login
+  count?: number; // Para listados
   data?: T;
   error?: string;
   message?: string;
 }
 
-export interface PaginatedResponse<T> {
-  success: boolean;
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-// ==================== LOGIN ====================
 export interface LoginDTO {
   email: string;
   password: string;
@@ -342,4 +334,41 @@ export interface DashboardStats {
     total_quantity: number;
     total_revenue: number;
   }[];
+}
+
+// ==================== FRONTEND-ONLY TYPES (localStorage) ====================
+export type WeekDay = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes';
+
+export interface WeeklyMenu {
+  id: string;
+  day: WeekDay;
+  mainDish: string;
+  side?: string;
+  drink?: string;
+  dessert?: string;
+  price: number;
+  week: string;
+  reservations: number;
+  available: boolean;
+}
+
+export interface MenuReservation {
+  id: string;
+  userId: string;
+  menuId: string;
+  date: Date;
+  status: 'confirmed' | 'cancelled';
+  createdAt: Date;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: 'compra' | 'pago' | 'fiado' | 'ajuste';
+  amount: number;
+  balance: number;
+  description: string;
+  paymentMethod?: string;
+  createdBy: string;
+  createdAt: Date;
 }

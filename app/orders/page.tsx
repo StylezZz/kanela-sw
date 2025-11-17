@@ -37,7 +37,7 @@ export default function OrdersPage() {
       filtered = orders.filter((o) => o.status === filterStatus);
     }
     return filtered.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, [orders, filterStatus]);
 
@@ -45,8 +45,8 @@ export default function OrdersPage() {
     return {
       total: orders.length,
       pending: orders.filter((o) => o.status === 'pending').length,
-      processing: orders.filter((o) => o.status === 'processing').length,
-      completed: orders.filter((o) => o.status === 'completed').length,
+      processing: orders.filter((o) => o.status === 'preparing').length,
+      completed: orders.filter((o) => o.status === 'delivered').length,
       cancelled: orders.filter((o) => o.status === 'cancelled').length,
     };
   }, [orders]);
@@ -55,9 +55,9 @@ export default function OrdersPage() {
     switch (status) {
       case 'pending':
         return <Clock className="h-4 w-4" />;
-      case 'processing':
+      case 'preparing':
         return <Clock className="h-4 w-4" />;
-      case 'completed':
+      case 'delivered':
         return <CheckCircle2 className="h-4 w-4" />;
       case 'cancelled':
         return <XCircle className="h-4 w-4" />;
@@ -70,9 +70,9 @@ export default function OrdersPage() {
     switch (status) {
       case 'pending':
         return 'secondary';
-      case 'processing':
+      case 'preparing':
         return 'default';
-      case 'completed':
+      case 'delivered':
         return 'outline';
       case 'cancelled':
         return 'destructive';
@@ -85,9 +85,9 @@ export default function OrdersPage() {
     switch (status) {
       case 'pending':
         return 'Pendiente';
-      case 'processing':
+      case 'preparing':
         return 'En Proceso';
-      case 'completed':
+      case 'delivered':
         return 'Completado';
       case 'cancelled':
         return 'Cancelado';
@@ -99,7 +99,7 @@ export default function OrdersPage() {
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
     updateOrderStatus(orderId, newStatus);
     toast.success(`Orden actualizada a: ${getStatusText(newStatus)}`);
-    if (selectedOrder?.id === orderId) {
+    if (selectedOrder?.order_id === orderId) {
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
   };
@@ -185,17 +185,17 @@ export default function OrdersPage() {
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order) => (
-                  <Card key={order.id}>
+                  <Card key={order.order_id}>
                     <CardHeader>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <CardTitle className="flex items-center gap-2">
                             <ShoppingBag className="h-5 w-5" />
-                            Pedido #{order.id.slice(-8)}
+                            Pedido #{order.order_id.slice(-8)}
                           </CardTitle>
                           <CardDescription>
-                            {order.userName} •{' '}
-                            {new Date(order.createdAt).toLocaleString('es-PE', {
+                            {order.user?.full_name} •{' '}
+                            {new Date(order.created_at).toLocaleString('es-PE', {
                               dateStyle: 'short',
                               timeStyle: 'short',
                             })}
@@ -207,7 +207,7 @@ export default function OrdersPage() {
                             <span className="ml-1">{getStatusText(order.status)}</span>
                           </Badge>
                           <Badge variant="outline">
-                            {getPaymentMethodName(order.paymentMethod)}
+                            {getPaymentMethodName(order.payment_method)}
                           </Badge>
                           <Button
                             size="sm"
@@ -224,17 +224,17 @@ export default function OrdersPage() {
                       <div className="flex flex-col sm:flex-row justify-between gap-4">
                         <div className="flex-1">
                           <p className="text-sm text-muted-foreground mb-2">
-                            {order.items.length} producto(s)
+                            {order.items?.length || 0} producto(s)
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {order.items.slice(0, 3).map((item, index) => (
+                            {order.items?.slice(0, 3).map((item, index) => (
                               <Badge key={index} variant="secondary">
-                                {item.productName} x{item.quantity}
+                                {item.product_name} x{item.quantity}
                               </Badge>
                             ))}
-                            {order.items.length > 3 && (
+                            {order.items?.length || 0 > 3 && (
                               <Badge variant="secondary">
-                                +{order.items.length - 3} más
+                                +{order.items?.length || 0 - 3} más
                               </Badge>
                             )}
                           </div>
@@ -242,7 +242,7 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-2">
                           <div className="text-right mr-4">
                             <p className="text-2xl font-bold text-primary">
-                              {formatCurrency(order.total)}
+                              {formatCurrency(parseFloat(order.total_amount))}
                             </p>
                           </div>
                           <div className="flex flex-col gap-2">
@@ -250,29 +250,29 @@ export default function OrdersPage() {
                               <Button
                                 size="sm"
                                 onClick={() =>
-                                  handleStatusChange(order.id, 'processing')
+                                  handleStatusChange(order.order_id, 'preparing')
                                 }
                               >
                                 Procesar
                               </Button>
                             )}
-                            {order.status === 'processing' && (
+                            {order.status === 'preparing' && (
                               <Button
                                 size="sm"
                                 onClick={() =>
-                                  handleStatusChange(order.id, 'completed')
+                                  handleStatusChange(order.order_id, 'delivered')
                                 }
                               >
                                 Completar
                               </Button>
                             )}
                             {(order.status === 'pending' ||
-                              order.status === 'processing') && (
+                              order.status === 'preparing') && (
                               <Button
                                 size="sm"
                                 variant="destructive"
                                 onClick={() =>
-                                  handleStatusChange(order.id, 'cancelled')
+                                  handleStatusChange(order.order_id, 'cancelled')
                                 }
                               >
                                 Cancelar
@@ -298,9 +298,9 @@ export default function OrdersPage() {
         {selectedOrder && (
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Detalles del Pedido #{selectedOrder.id.slice(-8)}</DialogTitle>
+              <DialogTitle>Detalles del Pedido #{selectedOrder.order_id.slice(-8)}</DialogTitle>
               <DialogDescription>
-                {new Date(selectedOrder.createdAt).toLocaleString('es-PE', {
+                {new Date(selectedOrder.created_at).toLocaleString('es-PE', {
                   dateStyle: 'long',
                   timeStyle: 'short',
                 })}
@@ -310,7 +310,7 @@ export default function OrdersPage() {
               {/* Info del cliente */}
               <div>
                 <h3 className="font-semibold mb-2">Cliente</h3>
-                <p>{selectedOrder.userName}</p>
+                <p>{selectedOrder.user?.full_name}</p>
               </div>
 
               <Separator />
@@ -319,16 +319,16 @@ export default function OrdersPage() {
               <div>
                 <h3 className="font-semibold mb-3">Productos</h3>
                 <div className="space-y-3">
-                  {selectedOrder.items.map((item, index) => (
+                  {selectedOrder.items?.map((item, index) => (
                     <div key={index} className="flex justify-between">
                       <div>
-                        <p className="font-medium">{item.productName}</p>
+                        <p className="font-medium">{item.product_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {item.quantity} x {formatCurrency(item.price)}
+                          {item.quantity} x {formatCurrency(parseFloat(item.unit_price))}
                         </p>
                       </div>
                       <p className="font-semibold">
-                        {formatCurrency(item.subtotal)}
+                        {formatCurrency(parseFloat(item.subtotal))}
                       </p>
                     </div>
                   ))}
@@ -341,7 +341,7 @@ export default function OrdersPage() {
               <div className="flex justify-between items-center text-lg">
                 <span className="font-semibold">Total</span>
                 <span className="text-2xl font-bold text-primary">
-                  {formatCurrency(selectedOrder.total)}
+                  {formatCurrency(parseFloat(selectedOrder.total_amount))}
                 </span>
               </div>
 
@@ -349,7 +349,7 @@ export default function OrdersPage() {
               <div>
                 <h3 className="font-semibold mb-2">Método de Pago</h3>
                 <Badge variant="outline">
-                  {getPaymentMethodName(selectedOrder.paymentMethod)}
+                  {getPaymentMethodName(selectedOrder.payment_method)}
                 </Badge>
               </div>
 
@@ -380,7 +380,7 @@ export default function OrdersPage() {
               </div>
 
               {/* Acciones */}
-              {selectedOrder.status !== 'completed' &&
+              {selectedOrder.status !== 'delivered' &&
                 selectedOrder.status !== 'cancelled' && (
                   <>
                     <Separator />
@@ -389,17 +389,17 @@ export default function OrdersPage() {
                         <Button
                           className="flex-1"
                           onClick={() => {
-                            handleStatusChange(selectedOrder.id, 'processing');
+                            handleStatusChange(selectedOrder.order_id, 'preparing');
                           }}
                         >
                           Marcar como En Proceso
                         </Button>
                       )}
-                      {selectedOrder.status === 'processing' && (
+                      {selectedOrder.status === 'preparing' && (
                         <Button
                           className="flex-1"
                           onClick={() => {
-                            handleStatusChange(selectedOrder.id, 'completed');
+                            handleStatusChange(selectedOrder.order_id, 'delivered');
                           }}
                         >
                           Marcar como Completado
@@ -409,7 +409,7 @@ export default function OrdersPage() {
                         variant="destructive"
                         className="flex-1"
                         onClick={() => {
-                          handleStatusChange(selectedOrder.id, 'cancelled');
+                          handleStatusChange(selectedOrder.order_id, 'cancelled');
                         }}
                       >
                         Cancelar Orden

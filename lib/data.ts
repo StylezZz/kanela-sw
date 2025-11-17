@@ -309,6 +309,12 @@ export const getDayName = (day: string): string => {
 // Helper para obtener el nombre del método de pago
 export const getPaymentMethodName = (method: string): string => {
   const methods: Record<string, string> = {
+    // Backend values
+    cash: 'Efectivo',
+    card: 'Tarjeta',
+    credit: 'Fiado',
+    transfer: 'Transferencia',
+    // Legacy values (por compatibilidad)
     efectivo: 'Efectivo',
     yape: 'Yape',
     plin: 'Plin',

@@ -64,8 +64,8 @@ export default function MenuPage() {
       setFormData({
         day: menu.day,
         mainDish: menu.mainDish,
-        side: menu.side,
-        drink: menu.drink,
+        side: menu.side || '',
+        drink: menu.drink || '',
         dessert: menu.dessert || '',
         price: menu.price.toString(),
       });
@@ -124,7 +124,7 @@ export default function MenuPage() {
 
     // Verificar si ya tiene una reserva para este menú
     const existingReservation = reservations.find(
-      (r) => r.userId === user.id && r.menuId === menu.id && r.status !== 'cancelled'
+      (r) => r.userId === user.user_id && r.menuId === menu.id && r.status !== 'cancelled'
     );
 
     if (existingReservation) {
@@ -133,7 +133,7 @@ export default function MenuPage() {
     }
 
     addReservation({
-      userId: user.id,
+      userId: user.user_id,
       menuId: menu.id,
       date: new Date(),
       status: 'confirmed',
@@ -145,7 +145,7 @@ export default function MenuPage() {
   const getUserReservation = (menuId: string) => {
     if (!user) return null;
     return reservations.find(
-      (r) => r.userId === user.id && r.menuId === menuId && r.status !== 'cancelled'
+      (r) => r.userId === user.user_id && r.menuId === menuId && r.status !== 'cancelled'
     );
   };
 
@@ -377,18 +377,18 @@ export default function MenuPage() {
           </div>
         )}
 
-        {!isAdmin && reservations.filter(r => r.userId === user?.id && r.status === 'confirmed').length > 0 && (
+        {!isAdmin && reservations.filter(r => r.userId === user?.user_id && r.status === 'confirmed').length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Mis Reservas</CardTitle>
               <CardDescription>
-                Tienes {reservations.filter(r => r.userId === user?.id && r.status === 'confirmed').length} reserva(s) confirmada(s)
+                Tienes {reservations.filter(r => r.userId === user?.user_id && r.status === 'confirmed').length} reserva(s) confirmada(s)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {reservations
-                  .filter(r => r.userId === user?.id && r.status === 'confirmed')
+                  .filter(r => r.userId === user?.user_id && r.status === 'confirmed')
                   .map((reservation) => {
                     const menu = weeklyMenu.find(m => m.id === reservation.menuId);
                     if (!menu) return null;
