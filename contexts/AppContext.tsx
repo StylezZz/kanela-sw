@@ -17,6 +17,7 @@ import {
   STORAGE_KEYS,
   generateId,
 } from '@/lib/data';
+import { api } from '@/lib/api';
 
 interface AppContextType {
   // Productos
@@ -48,6 +49,7 @@ interface AppContextType {
   // Usuarios (para admin)
   users: User[];
   updateUserBalance: (userId: string, amount: number) => void;
+  fetchUsers: () => Promise<void>;
 
   // Refresh data
   refreshData: () => void;
@@ -216,6 +218,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Usuarios
+  const fetchUsers = async () => {
+    try {
+      const { users: fetchedUsers } = await api.users.getAll();
+      setUsers(fetchedUsers);
+      storage.set(STORAGE_KEYS.USERS, fetchedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   const updateUserBalance = (userId: string, amount: number) => {
     // NOTA: Este método necesita refactorización para usar la API del backend
     // Actualmente usa campos incorrectos (u.id debería ser u.user_id, balance no existe)
@@ -254,6 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTransaction,
     users,
     updateUserBalance,
+    fetchUsers,
     refreshData,
   };
 

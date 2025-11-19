@@ -198,6 +198,31 @@ export const usersApi = {
     );
     return response.data!.history;
   },
+
+  /**
+   * Carga masiva de usuarios mediante archivo Excel
+   * POST /users/bulk-upload
+   */
+  bulkUpload: async (file: File): Promise<{ created: number; errors: string[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_CONFIG.BASE_URL}/users/bulk-upload`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+
+    const data: BackendResponse<{ created: number; errors: string[] }> = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Error en la carga masiva');
+    }
+
+    return data.data!;
+  },
 };
 
 // ==================== CATEGORÍAS ====================
