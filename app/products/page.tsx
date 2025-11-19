@@ -47,6 +47,7 @@ import { formatCurrency, getCategoryName } from "@/lib/data";
 import { Product, Category } from "@/lib/types";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { ImageUpload } from "@/components/upload/ImageUpload";
 
 export default function ProductsPage() {
   const { isAdmin } = useAuth();
@@ -70,6 +71,8 @@ export default function ProductsPage() {
     price: "",
     category_id: "",
     stock: "",
+    image_url: "",
+    thumbnail_url: "",
   });
 
   const loadCategories = async () => {
@@ -134,6 +137,8 @@ export default function ProductsPage() {
         price: parseFloat(product.price).toString(),
         category_id: product.category_id,
         stock: product.stock_quantity.toString(),
+        image_url: product.image_url || "",
+        thumbnail_url: product.thumbnail_url || "",
       });
     } else {
       setEditingProduct(null);
@@ -143,6 +148,8 @@ export default function ProductsPage() {
         price: "",
         category_id: "",
         stock: "",
+        image_url: "",
+        thumbnail_url: "",
       });
     }
     setIsDialogOpen(true);
@@ -163,6 +170,8 @@ export default function ProductsPage() {
           price: parseFloat(formData.price),
           category_id: formData.category_id,
           stock_quantity: parseInt(formData.stock),
+          image_url: formData.image_url || undefined,
+          thumbnail_url: formData.thumbnail_url || undefined,
         });
         toast.success("Producto actualizado correctamente");
       } else {
@@ -173,6 +182,8 @@ export default function ProductsPage() {
           category_id: formData.category_id,
           stock_quantity: parseInt(formData.stock),
           is_available: true,
+          image_url: formData.image_url || undefined,
+          thumbnail_url: formData.thumbnail_url || undefined,
         });
         toast.success("Producto agregado correctamente");
       }
@@ -238,7 +249,7 @@ export default function ProductsPage() {
                   Nuevo Producto
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingProduct ? "Editar Producto" : "Nuevo Producto"}
@@ -335,6 +346,25 @@ export default function ProductsPage() {
                       </Select>
                     )}
                   </div>
+                  <div className="grid gap-2">
+                    <ImageUpload
+                      label="Imagen del Producto"
+                      value={formData.image_url}
+                      onChange={(url) => {
+                        setFormData({ ...formData, image_url: url });
+                        // Auto-generar thumbnail (mismo URL con transformación)
+                        if (url) {
+                          const thumbnailUrl = url.replace('/upload/', '/upload/w_200,h_200,c_fill,q_auto,f_auto/');
+                          setFormData(prev => ({ ...prev, thumbnail_url: thumbnailUrl }));
+                        }
+                      }}
+                      onRemove={() => {
+                        setFormData({ ...formData, image_url: "", thumbnail_url: "" });
+                      }}
+                      folder="products"
+                      disabled={isSaving}
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button
@@ -395,6 +425,16 @@ export default function ProductsPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => (
                 <Card key={product.product_id} className="flex flex-col">
+                  {/* Imagen del producto */}
+                  {(product.thumbnail_url || product.image_url) && (
+                    <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+                      <img
+                        src={product.thumbnail_url || product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <Badge variant="secondary">
