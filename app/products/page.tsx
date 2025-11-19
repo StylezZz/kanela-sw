@@ -42,11 +42,13 @@ import {
   Trash2,
   Search,
   Loader2,
+  Package,
 } from "lucide-react";
-import { formatCurrency, getCategoryName } from "@/lib/data";
+
 import { Product, Category } from "@/lib/types";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { ImageUpload } from "@/components/upload/ImageUpload";
 
 export default function ProductsPage() {
   const { isAdmin } = useAuth();
@@ -70,6 +72,8 @@ export default function ProductsPage() {
     price: "",
     category_id: "",
     stock: "",
+    image_url: "",
+    thumbnail_url: "",
   });
 
   const loadCategories = async () => {
@@ -107,14 +111,7 @@ export default function ProductsPage() {
     loadProducts();
   }, []);
 
-  const categoryNames: string[] = [
-    "almuerzos",
-    "bebidas",
-    "snacks",
-    "postres",
-    "utiles",
-    "otros",
-  ];
+
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name
@@ -134,6 +131,8 @@ export default function ProductsPage() {
         price: parseFloat(product.price).toString(),
         category_id: product.category_id,
         stock: product.stock_quantity.toString(),
+        image_url: product.image_url || "",
+        thumbnail_url: product.thumbnail_url || "",
       });
     } else {
       setEditingProduct(null);
@@ -143,6 +142,8 @@ export default function ProductsPage() {
         price: "",
         category_id: "",
         stock: "",
+        image_url: "",
+        thumbnail_url: "",
       });
     }
     setIsDialogOpen(true);
@@ -163,6 +164,8 @@ export default function ProductsPage() {
           price: parseFloat(formData.price),
           category_id: formData.category_id,
           stock_quantity: parseInt(formData.stock),
+          image_url: formData.image_url || undefined,
+          thumbnail_url: formData.thumbnail_url || undefined,
         });
         toast.success("Producto actualizado correctamente");
       } else {
@@ -173,6 +176,8 @@ export default function ProductsPage() {
           category_id: formData.category_id,
           stock_quantity: parseInt(formData.stock),
           is_available: true,
+          image_url: formData.image_url || undefined,
+          thumbnail_url: formData.thumbnail_url || undefined,
         });
         toast.success("Producto agregado correctamente");
       }
@@ -238,7 +243,7 @@ export default function ProductsPage() {
                   Nuevo Producto
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingProduct ? "Editar Producto" : "Nuevo Producto"}
@@ -335,6 +340,35 @@ export default function ProductsPage() {
                       </Select>
                     )}
                   </div>
+                  <div className="grid gap-2">
+                    <ImageUpload
+                      label="Imagen del Producto"
+                      value={formData.image_url}
+                      onChange={(url) => {
+                        setFormData({ ...formData, image_url: url });
+                        // Auto-generar thumbnail (mismo URL con transformación)
+                        if (url) {
+                          const thumbnailUrl = url.replace(
+                            "/upload/",
+                            "/upload/w_200,h_200,c_fill,q_auto,f_auto/"
+                          );
+                          setFormData((prev) => ({
+                            ...prev,
+                            thumbnail_url: thumbnailUrl,
+                          }));
+                        }
+                      }}
+                      onRemove={() => {
+                        setFormData({
+                          ...formData,
+                          image_url: "",
+                          thumbnail_url: "",
+                        });
+                      }}
+                      folder="products"
+                      disabled={isSaving}
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button
@@ -394,37 +428,70 @@ export default function ProductsPage() {
           <TabsContent value={selectedCategory} className="mt-6">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => (
-                <Card key={product.product_id} className="flex flex-col">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <Badge variant="secondary">
-                        {product.category_name || "Sin categoría"}
+                <Card
+                  key={product.product_id}
+                  className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                >
+                  {/* Imagen del producto - Optimizada */}
+                  <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 overflow-hidden">
+                    {product.thumbnail_url || product.image_url ? (
+                      <img
+                        src={product.thumbnail_url || product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform hover:scale-110 duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <Package className="h-16 w-16 mx-auto text-muted-foreground/40 mb-2" />
+                          <span className="text-sm text-muted-foreground">Sin imagen</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Badge de stock sobre la imagen */}
+                    {product.stock_quantity < 10 && (
+                      <Badge
+                        variant={
+                          product.stock_quantity < 5
+                            ? "destructive"
+                            : "secondary"
+                        }
+                        className="absolute top-3 right-3 shadow-md"
+                      >
+                        {product.stock_quantity < 5 ? "¡Últimas unidades!" : `Stock: ${product.stock_quantity}`}
                       </Badge>
-                      {product.stock_quantity < 10 && (
-                        <Badge
-                          variant={
-                            product.stock_quantity < 5
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          Stock: {product.stock_quantity}
-                        </Badge>
-                      )}
+                    )}
+                  </div>
+
+                  {/* Contenido debajo de la imagen */}
+                  <CardHeader className="pb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs font-normal">
+                        {categories.find(c => c.category_id === product.category_id)?.name || "Sin categoría"}
+                      </Badge>
                     </div>
-                    <CardTitle className="line-clamp-1">
+                    <CardTitle className="line-clamp-2 text-lg leading-tight">
                       {product.name}
                     </CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {product.description}
-                    </CardDescription>
+                    {product.description && (
+                      <CardDescription className="line-clamp-2 text-sm">
+                        {product.description}
+                      </CardDescription>
+                    )}
                   </CardHeader>
-                  <CardContent className="flex-1">
-                    <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(parseFloat(product.price))}
-                    </p>
+
+                  <CardContent className="flex-1 pt-0 pb-4">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm text-muted-foreground">S/</span>
+                      <p className="text-3xl font-bold text-primary">
+                        {parseFloat(product.price).toFixed(2)}
+                      </p>
+                    </div>
                   </CardContent>
-                  <CardFooter className="flex gap-2">
+
+                  <CardFooter className="flex gap-2 pt-4 border-t bg-muted/30">
                     {isAdmin ? (
                       <>
                         <Button
@@ -439,6 +506,7 @@ export default function ProductsPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="text-destructive hover:text-destructive"
                           onClick={() =>
                             handleDeleteProduct(product.product_id)
                           }
@@ -453,7 +521,7 @@ export default function ProductsPage() {
                         disabled={product.stock_quantity === 0}
                       >
                         <ShoppingCart className="mr-2 h-4 w-4" />
-                        {product.stock_quantity === 0 ? "Agotado" : "Agregar"}
+                        {product.stock_quantity === 0 ? "Agotado" : "Agregar al carrito"}
                       </Button>
                     )}
                   </CardFooter>
