@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -65,7 +66,10 @@ const formatCurrency = (amount: string | number) => {
 };
 
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr + 'T12:00:00');
+  // Manejar tanto formato ISO completo (2025-11-17T05:00:00.000Z) 
+  // como formato simple (2025-11-17)
+  const date = new Date(dateStr);
+  
   return date.toLocaleDateString('es-PE', {
     weekday: 'long',
     day: 'numeric',
@@ -325,10 +329,10 @@ export default function MenuPage() {
               menus.map((menu) => (
                 <Card key={menu.menu_id}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <Badge variant="outline">
-                        <Calendar className="mr-1 h-3 w-3" />
-                        {formatDate(menu.menu_date)}
+                    <div className="flex items-start justify-between gap-2">
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span className="text-xs">Menú: {formatDate(menu.menu_date)}</span>
                       </Badge>
                       <Badge variant={menu.can_reserve ? 'default' : 'secondary'}>
                         <Users className="mr-1 h-3 w-3" />
@@ -344,10 +348,13 @@ export default function MenuPage() {
                     <div><span className="text-muted-foreground">Postre:</span> {menu.dessert_description}</div>
                     <div className="pt-2 border-t flex justify-between items-center">
                       <span className="text-xl font-bold text-primary">{formatCurrency(menu.price)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        <Clock className="inline h-3 w-3 mr-1" />
-                        {formatDateTime(menu.reservation_deadline)}
-                      </span>
+                      <div className="text-xs text-muted-foreground text-right">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Reservar hasta:</span>
+                        </div>
+                        <div className="font-medium">{formatDateTime(menu.reservation_deadline)}</div>
+                      </div>
                     </div>
                   </CardContent>
                   <CardFooter className="flex gap-2">
@@ -394,10 +401,10 @@ export default function MenuPage() {
                     return (
                       <Card key={menu.menu_id} className={hasReservation ? 'border-primary' : ''}>
                         <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between">
-                            <Badge variant="outline">
-                              <Calendar className="mr-1 h-3 w-3" />
-                              {formatDate(menu.menu_date)}
+                          <div className="flex items-start justify-between gap-2">
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span className="text-xs">Menú: {formatDate(menu.menu_date)}</span>
                             </Badge>
                             {hasReservation && (
                               <Badge className="bg-primary">
@@ -425,9 +432,14 @@ export default function MenuPage() {
                           <div className="pt-2 border-t">
                             <span className="text-xl font-bold text-primary">{formatCurrency(menu.price)}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            <Clock className="inline h-3 w-3 mr-1" />
-                            Reservar hasta: {formatDateTime(menu.reservation_deadline)}
+                          <div className="pt-1 space-y-1">
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Límite para reservar:</span>
+                            </div>
+                            <div className="text-xs font-medium">
+                              {formatDateTime(menu.reservation_deadline)}
+                            </div>
                           </div>
                         </CardContent>
                         <CardFooter>
