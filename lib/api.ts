@@ -198,6 +198,45 @@ export const usersApi = {
     );
     return response.data!.history;
   },
+
+  /**
+   * Carga masiva de usuarios mediante archivo Excel
+   * POST /users/bulk-upload
+   */
+  bulkUpload: async (file: File): Promise<{ created: number; errors: string[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_CONFIG.BASE_URL}/users/bulk-upload`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+
+    const data: BackendResponse<{ created: number; errors: string[] }> = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Error en la carga masiva');
+    }
+
+    return data.data!;
+  },
+
+  getTemplateFile: async(): Promise<Blob> => {
+    const url = `${API_CONFIG.BASE_URL}/users/import/template`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar la plantilla');
+    }
+
+    return await response.blob();
+  },
 };
 
 // ==================== CATEGORÍAS ====================
