@@ -363,3 +363,132 @@ export interface Transaction {
   createdBy: string;
   createdAt: Date;
 }
+
+// ==================== MENÚS SEMANALES ====================
+export type ReservationStatus = 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+export type WaitlistStatus = 'waiting' | 'notified' | 'converted' | 'expired';
+export type DemandStatus = 'unlimited' | 'available' | 'full' | 'full_with_demand';
+
+export interface WeeklyMenuBackend {
+  menu_id: string;
+  menu_date: string;
+  entry_description: string;
+  main_course_description: string;
+  drink_description: string;
+  dessert_description: string;
+  description?: string;
+  price: string;
+  reservation_deadline: string;
+  max_reservations?: number;
+  current_reservations: number;
+  is_active: boolean;
+  can_reserve: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateWeeklyMenuDTO {
+  menu_date: string;
+  entry_description: string;
+  main_course_description: string;
+  drink_description: string;
+  dessert_description: string;
+  description?: string;
+  price: number;
+  reservation_deadline?: string;
+  max_reservations?: number;
+}
+
+export interface UpdateWeeklyMenuDTO {
+  entry_description?: string;
+  main_course_description?: string;
+  drink_description?: string;
+  dessert_description?: string;
+  description?: string;
+  price?: number;
+  reservation_deadline?: string;
+  max_reservations?: number;
+  is_active?: boolean;
+}
+
+export interface MenuReservationBackend {
+  reservation_id: string;
+  menu_id: string;
+  user_id: string;
+  quantity: number;
+  total_amount: string;
+  status: ReservationStatus;
+  notes?: string;
+  cancellation_reason?: string;
+  reserved_at: string;
+  confirmed_at?: string;
+  delivered_at?: string;
+  cancelled_at?: string;
+  // Joins
+  menu?: WeeklyMenuBackend;
+  user?: User;
+}
+
+export interface CreateMenuReservationDTO {
+  quantity: number;
+  notes?: string;
+}
+
+export interface MenuWaitlist {
+  waitlist_id: string;
+  menu_id: string;
+  user_id: string;
+  quantity: number;
+  notes?: string;
+  status: WaitlistStatus;
+  created_at: string;
+  notified_at?: string;
+  // Joins
+  menu?: WeeklyMenuBackend;
+  user?: User;
+}
+
+export interface MenuStats {
+  pending_count: number;
+  confirmed_count: number;
+  delivered_count: number;
+  cancelled_count: number;
+  total_quantity: number;
+  total_revenue: string;
+}
+
+export interface MenuDemand {
+  menu_id: string;
+  menu_date: string;
+  max_reservations?: number;
+  current_reservations: number;
+  spots_available: number;
+  waitlist_count: number;
+  waitlist_quantity: number;
+  total_demand: number;
+  unmet_demand: number;
+  demand_status: DemandStatus;
+}
+
+export interface DemandReport {
+  menu_id: string;
+  menu_date: string;
+  entry_description: string;
+  main_course_description: string;
+  max_reservations?: number;
+  current_reservations: number;
+  waitlist_count: number;
+  waitlist_quantity: number;
+  total_demand: number;
+  unmet_demand: number;
+  occupancy_percentage: number;
+}
+
+export interface ImportMenusResult {
+  total: number;
+  successful: number;
+  failed: number;
+  skipped: number;
+  errors: string[];
+  createdMenus: WeeklyMenuBackend[];
+}
