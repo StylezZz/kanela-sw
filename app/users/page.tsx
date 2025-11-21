@@ -188,26 +188,25 @@ export default function UsersPage() {
   };
 
   // Descargar plantilla de Excel
-  const downloadTemplate = () => {
-    const csvContent = 'email,full_name,phone,password,role,credit_limit\n' +
-      'usuario@example.com,Juan Pérez,+51999999999,password123,customer,100.00\n';
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'plantilla_usuarios.csv');
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: 'Plantilla descargada',
-      description: 'La plantilla ha sido descargada exitosamente',
-    });
+  const downloadTemplate = async () => {
+    try{
+      const response = await api.users.getTemplateFile();
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link
+        .href = url;
+      link.setAttribute('download', 'user_upload_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error al descargar la plantilla',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

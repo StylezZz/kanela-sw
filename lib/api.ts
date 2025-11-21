@@ -223,6 +223,20 @@ export const usersApi = {
 
     return data.data!;
   },
+
+  getTemplateFile: async(): Promise<Blob> => {
+    const url = `${API_CONFIG.BASE_URL}/users/import/template`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar la plantilla');
+    }
+
+    return await response.blob();
+  },
 };
 
 // ==================== CATEGORÍAS ====================
