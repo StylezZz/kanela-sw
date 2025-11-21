@@ -441,26 +441,173 @@ export const productsApi = {
 
 // ==================== ÓRDENES ====================
 
+// Tipos específicos para órdenes
+interface OrderPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+interface OrderStats {
+  total_orders: number;
+  completed_orders?: number;
+  delivered_orders?: number;
+  cancelled_orders: number;
+  credit_orders?: number;
+  total_spent?: number;
+  total_revenue?: number;
+  credit_revenue?: number;
+  avg_order_value: number;
+}
+
+interface OrderStatsSummary {
+  stats: OrderStats;
+  period?: {
+    from: string;
+    to: string;
+  };
+}
+
 export const ordersApi = {
+  // ========== ENDPOINTS PARA CLIENTES ==========
+
   /**
-   * Obtener todas las órdenes
-   * GET /orders
+   * Crear pedido
+   * POST /orders
    */
-  getAll: async (params?: {
+  create: async (orderData: CreateOrderDTO): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+    return response.data!.order;
+  },
+
+  /**
+   * Obtener mis pedidos (lista simple)
+   * GET /orders/my-orders
+   */
+  getMyOrders: async (params?: {
+    status?: string;
+    payment_method?: string;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
+
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
+      `/orders/my-orders?${queryParams}`
+    );
+
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Historial de mis pedidos (con paginación)
+   * GET /orders/my-history
+   */
+  getMyHistory: async (params?: {
     page?: number;
     limit?: number;
-    status?: string;
-    user_id?: string;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<{ orders: Order[]; count: number }> => {
+  }): Promise<{ orders: Order[]; pagination: OrderPagination }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const response = await apiRequest<BackendResponse<{ orders: Order[]; pagination: OrderPagination }>>(
+      `/orders/my-history?${queryParams}`
+    );
+
+    return {
+      orders: response.data!.orders,
+      pagination: response.data!.pagination,
+    };
+  },
+
+  /**
+   * Mis órdenes activas
+   * GET /orders/my-active
+   */
+  getMyActive: async (): Promise<{ orders: Order[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
+      '/orders/my-active'
+    );
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Mis estadísticas de pedidos
+   * GET /orders/my-stats
+   */
+  getMyStats: async (): Promise<OrderStats> => {
+    const response = await apiRequest<BackendResponse<{ stats: OrderStats }>>(
+      '/orders/my-stats'
+    );
+    return response.data!.stats;
+  },
+
+  /**
+   * Obtener detalle de pedido
+   * GET /orders/:id
+   */
+  getById: async (orderId: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(`/orders/${orderId}`);
+    return response.data!.order;
+  },
+
+  /**
+   * Reordenar (repetir pedido anterior)
+   * POST /orders/:id/reorder
+   */
+  reorder: async (orderId: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/reorder`,
+      { method: 'POST' }
+    );
+    return response.data!.order;
+  },
+
+  /**
+   * Cancelar pedido (cliente)
+   * DELETE /orders/:id
+   */
+  cancel: async (orderId: string, reason?: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      }
+    );
+    return response.data!.order;
+  },
+
+  // ========== ENDPOINTS PARA ADMINISTRADORES ==========
+
+  /**
+   * Obtener todos los pedidos
+   * GET /orders
+   */
+  getAll: async (params?: {
+    status?: string;
+    payment_method?: string;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
-    if (params?.user_id) queryParams.append('user_id', params.user_id);
-    if (params?.start_date) queryParams.append('start_date', params.start_date);
-    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
 
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders?${queryParams}`
@@ -473,80 +620,178 @@ export const ordersApi = {
   },
 
   /**
-   * Obtener orden por ID
-   * GET /orders/:id
+   * Pedidos con paginación y filtros avanzados
+   * GET /orders/paginated
    */
-  getById: async (orderId: string): Promise<Order> => {
-    const response = await apiRequest<BackendResponse<{ order: Order }>>(`/orders/${orderId}`);
-    return response.data!.order;
-  },
-
-  /**
-   * Crear nueva orden
-   * POST /orders
-   */
-  create: async (orderData: CreateOrderDTO): Promise<Order> => {
-    const response = await apiRequest<BackendResponse<{ order: Order }>>('/orders', {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    });
-    return response.data!.order;
-  },
-
-  /**
-   * Actualizar estado de orden
-   * PATCH /orders/:id/status
-   */
-  updateStatus: async (
-    orderId: string,
-    status: string,
-    cancellation_reason?: string
-  ): Promise<Order> => {
-    const response = await apiRequest<BackendResponse<{ order: Order }>>(
-      `/orders/${orderId}/status`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ status, cancellation_reason }),
-      }
-    );
-    return response.data!.order;
-  },
-
-  /**
-   * Cancelar orden
-   * POST /orders/:id/cancel
-   */
-  cancel: async (orderId: string, reason: string): Promise<Order> => {
-    const response = await apiRequest<BackendResponse<{ order: Order }>>(
-      `/orders/${orderId}/cancel`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-      }
-    );
-    return response.data!.order;
-  },
-
-  /**
-   * Obtener órdenes del usuario actual
-   * GET /orders/my-orders
-   */
-  getMyOrders: async (params?: {
+  getPaginated: async (params?: {
     page?: number;
     limit?: number;
-  }): Promise<{ orders: Order[]; count: number }> => {
+    status?: string;
+    payment_method?: string;
+    payment_status?: string;
+    is_credit_order?: boolean;
+    date_from?: string;
+    date_to?: string;
+    user_id?: string;
+    search?: string;
+  }): Promise<{ orders: Order[]; pagination: OrderPagination }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
+    if (params?.payment_status) queryParams.append('payment_status', params.payment_status);
+    if (params?.is_credit_order !== undefined) queryParams.append('is_credit_order', params.is_credit_order.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+    if (params?.user_id) queryParams.append('user_id', params.user_id);
+    if (params?.search) queryParams.append('search', params.search);
+
+    const response = await apiRequest<BackendResponse<{ orders: Order[]; pagination: OrderPagination }>>(
+      `/orders/paginated?${queryParams}`
+    );
+
+    return {
+      orders: response.data!.orders,
+      pagination: response.data!.pagination,
+    };
+  },
+
+  /**
+   * Órdenes activas (panel de preparación)
+   * GET /orders/active
+   */
+  getActive: async (): Promise<{ orders: Order[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
+      '/orders/active'
+    );
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Órdenes del día
+   * GET /orders/today
+   */
+  getToday: async (): Promise<{ orders: Order[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
+      '/orders/today'
+    );
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Estadísticas de pedidos
+   * GET /orders/stats/summary
+   */
+  getStatsSummary: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<OrderStatsSummary> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<OrderStatsSummary>>(
+      `/orders/stats/summary?${queryParams}`
+    );
+    return response.data!;
+  },
+
+  /**
+   * Buscar por número de orden
+   * GET /orders/search/:orderNumber
+   */
+  searchByOrderNumber: async (orderNumber: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/search/${orderNumber}`
+    );
+    return response.data!.order;
+  },
+
+  /**
+   * Órdenes de un cliente específico
+   * GET /orders/customer/:customerId
+   */
+  getByCustomer: async (customerId: string, params?: {
+    status?: string;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
 
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
-      `/orders/my-orders?${queryParams}`
+      `/orders/customer/${customerId}?${queryParams}`
     );
 
     return {
       orders: response.data!.orders,
       count: response.count || 0,
     };
+  },
+
+  /**
+   * Validar código QR
+   * POST /orders/validate-qr
+   */
+  validateQR: async (qr_code: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      '/orders/validate-qr',
+      {
+        method: 'POST',
+        body: JSON.stringify({ qr_code }),
+      }
+    );
+    return response.data!.order;
+  },
+
+  /**
+   * Actualizar estado del pedido
+   * PATCH /orders/:id/status
+   */
+  updateStatus: async (orderId: string, status: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }
+    );
+    return response.data!.order;
+  },
+
+  /**
+   * Actualizar notas del pedido
+   * PATCH /orders/:id/notes
+   */
+  updateNotes: async (orderId: string, notes: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/notes`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ notes }),
+      }
+    );
+    return response.data!.order;
+  },
+
+  /**
+   * Actualizar tiempo estimado
+   * PATCH /orders/:id/estimated-time
+   */
+  updateEstimatedTime: async (orderId: string, estimated_ready_time: string): Promise<Order> => {
+    const response = await apiRequest<BackendResponse<{ order: Order }>>(
+      `/orders/${orderId}/estimated-time`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ estimated_ready_time }),
+      }
+    );
+    return response.data!.order;
   },
 };
 
