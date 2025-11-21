@@ -493,10 +493,12 @@ export const ordersApi = {
   getMyOrders: async (params?: {
     status?: string;
     payment_method?: string;
+    include_items?: boolean;
   }): Promise<{ orders: Order[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
     if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
+    if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders/my-orders?${queryParams}`
@@ -515,10 +517,12 @@ export const ordersApi = {
   getMyHistory: async (params?: {
     page?: number;
     limit?: number;
+    include_items?: boolean;
   }): Promise<{ orders: Order[]; pagination: OrderPagination }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[]; pagination: OrderPagination }>>(
       `/orders/my-history?${queryParams}`
@@ -534,9 +538,14 @@ export const ordersApi = {
    * Mis órdenes activas
    * GET /orders/my-active
    */
-  getMyActive: async (): Promise<{ orders: Order[]; count: number }> => {
+  getMyActive: async (params?: {
+    include_items?: boolean;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.include_items) queryParams.append('include_items', 'true');
+
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
-      '/orders/my-active'
+      `/orders/my-active?${queryParams}`
     );
     return {
       orders: response.data!.orders,
@@ -602,12 +611,14 @@ export const ordersApi = {
     payment_method?: string;
     date_from?: string;
     date_to?: string;
+    include_items?: boolean;
   }): Promise<{ orders: Order[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
     if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
     if (params?.date_from) queryParams.append('date_from', params.date_from);
     if (params?.date_to) queryParams.append('date_to', params.date_to);
+    if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders?${queryParams}`
@@ -634,6 +645,7 @@ export const ordersApi = {
     date_to?: string;
     user_id?: string;
     search?: string;
+    include_items?: boolean;
   }): Promise<{ orders: Order[]; pagination: OrderPagination }> => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
@@ -646,6 +658,7 @@ export const ordersApi = {
     if (params?.date_to) queryParams.append('date_to', params.date_to);
     if (params?.user_id) queryParams.append('user_id', params.user_id);
     if (params?.search) queryParams.append('search', params.search);
+    if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[]; pagination: OrderPagination }>>(
       `/orders/paginated?${queryParams}`
@@ -661,9 +674,14 @@ export const ordersApi = {
    * Órdenes activas (panel de preparación)
    * GET /orders/active
    */
-  getActive: async (): Promise<{ orders: Order[]; count: number }> => {
+  getActive: async (params?: {
+    include_items?: boolean;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.include_items) queryParams.append('include_items', 'true');
+
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
-      '/orders/active'
+      `/orders/active?${queryParams}`
     );
     return {
       orders: response.data!.orders,
@@ -675,9 +693,14 @@ export const ordersApi = {
    * Órdenes del día
    * GET /orders/today
    */
-  getToday: async (): Promise<{ orders: Order[]; count: number }> => {
+  getToday: async (params?: {
+    include_items?: boolean;
+  }): Promise<{ orders: Order[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.include_items) queryParams.append('include_items', 'true');
+
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
-      '/orders/today'
+      `/orders/today?${queryParams}`
     );
     return {
       orders: response.data!.orders,
@@ -720,9 +743,11 @@ export const ordersApi = {
    */
   getByCustomer: async (customerId: string, params?: {
     status?: string;
+    include_items?: boolean;
   }): Promise<{ orders: Order[]; count: number }> => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
+    if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[] }>>(
       `/orders/customer/${customerId}?${queryParams}`
