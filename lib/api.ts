@@ -129,6 +129,39 @@ export const authApi = {
 
     return { token };
   },
+
+  /**
+   * Solicitar reset de contraseña
+   * POST /auth/forgot-password
+   */
+  forgotPassword: async (email: string): Promise<void> => {
+    await apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * Verificar si el token de reset es válido
+   * GET /auth/verify-reset-token/:token
+   */
+  verifyResetToken: async (token: string): Promise<{ valid: boolean }> => {
+    const response = await apiRequest<BackendResponse<{ valid: boolean }>>(
+      `/auth/verify-reset-token/${token}`
+    );
+    return { valid: response.data?.valid ?? true };
+  },
+
+  /**
+   * Cambiar contraseña con token
+   * POST /auth/reset-password
+   */
+  resetPassword: async (token: string, password: string, confirmPassword: string): Promise<void> => {
+    await apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, confirmPassword }),
+    });
+  },
 };
 
 // ==================== USUARIOS ====================
