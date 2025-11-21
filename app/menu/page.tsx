@@ -31,6 +31,13 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Plus,
   Edit,
   Trash2,
@@ -40,17 +47,14 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Download,
-  Upload,
   RefreshCw,
-  UserPlus,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { weeklyMenusApi } from '@/lib/api';
 import type {
   WeeklyMenuBackend,
   MenuReservationBackend,
-  MenuWaitlist,
   CreateWeeklyMenuDTO,
   ReservationStatus,
 } from '@/lib/types';
@@ -61,7 +65,7 @@ const formatCurrency = (amount: string | number) => {
 };
 
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr + 'T12:00:00');
   return date.toLocaleDateString('es-PE', {
     weekday: 'long',
     day: 'numeric',
@@ -84,13 +88,13 @@ export default function MenuPage() {
   const { user, isAdmin } = useAuth();
   const [menus, setMenus] = useState<WeeklyMenuBackend[]>([]);
   const [myReservations, setMyReservations] = useState<MenuReservationBackend[]>([]);
-  const [myWaitlist, setMyWaitlist] = useState<MenuWaitlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isReserveDialogOpen, setIsReserveDialogOpen] = useState(false);
-  const [isWaitlistDialogOpen, setIsWaitlistDialogOpen] = useState(false);
+  const [isReservationsDialogOpen, setIsReservationsDialogOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<WeeklyMenuBackend | null>(null);
   const [selectedMenu, setSelectedMenu] = useState<WeeklyMenuBackend | null>(null);
+  const [menuReservations, setMenuReservations] = useState<MenuReservationBackend[]>([]);
 
   const [formData, setFormData] = useState<CreateWeeklyMenuDTO>({
     menu_date: '',
@@ -99,7 +103,7 @@ export default function MenuPage() {
     drink_description: '',
     dessert_description: '',
     description: '',
-    price: 0,
+    price: 8.5,
     max_reservations: 30,
   });
 
@@ -115,8 +119,6 @@ export default function MenuPage() {
       if (user && !isAdmin) {
         const reservations = await weeklyMenusApi.getMyReservations();
         setMyReservations(reservations);
-        const waitlist = await weeklyMenusApi.getMyWaitlist();
-        setMyWaitlist(waitlist);
       }
     } catch (error) {
       console.error('Error loading menus:', error);
@@ -145,8 +147,10 @@ export default function MenuPage() {
       });
     } else {
       setEditingMenu(null);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       setFormData({
-        menu_date: '',
+        menu_date: tomorrow.toISOString().split('T')[0],
         entry_description: '',
         main_course_description: '',
         drink_description: '',
@@ -215,29 +219,6 @@ export default function MenuPage() {
     }
   };
 
-  const handleOpenWaitlistDialog = (menu: WeeklyMenuBackend) => {
-    setSelectedMenu(menu);
-    setReserveNotes('');
-    setReserveQuantity(1);
-    setIsWaitlistDialogOpen(true);
-  };
-
-  const handleJoinWaitlist = async () => {
-    if (!selectedMenu) return;
-
-    try {
-      await weeklyMenusApi.joinWaitlist(selectedMenu.menu_id, {
-        quantity: reserveQuantity,
-        notes: reserveNotes || undefined,
-      });
-      toast.success('Agregado a la lista de espera');
-      setIsWaitlistDialogOpen(false);
-      loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Error al unirse a la lista de espera');
-    }
-  };
-
   const handleCancelReservation = async (reservationId: string) => {
     if (!confirm('¿Cancelar esta reservación?')) return;
 
@@ -250,75 +231,45 @@ export default function MenuPage() {
     }
   };
 
-  const handleLeaveWaitlist = async (waitlistId: string) => {
-    if (!confirm('¿Salir de la lista de espera?')) return;
-
+  const handleViewReservations = async (menu: WeeklyMenuBackend) => {
+    setSelectedMenu(menu);
     try {
-      await weeklyMenusApi.leaveWaitlist(waitlistId);
-      toast.success('Eliminado de la lista de espera');
-      loadData();
+      const { reservations } = await weeklyMenusApi.getMenuReservations(menu.menu_id);
+      setMenuReservations(reservations);
+      setIsReservationsDialogOpen(true);
     } catch (error: any) {
-      toast.error(error.message || 'Error al salir de la lista');
+      toast.error(error.message || 'Error al cargar reservaciones');
     }
   };
 
-  const handleDownloadTemplate = async () => {
+  const handleUpdateReservationStatus = async (reservationId: string, status: ReservationStatus) => {
     try {
-      const blob = await weeklyMenusApi.getTemplate();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'plantilla_menus_semanales.xlsx';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error('Error al descargar la plantilla');
-    }
-  };
-
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await weeklyMenusApi.importFromExcel(file);
-      toast.success(`Importados ${result.successful} menús`);
-      if (result.errors.length > 0) {
-        result.errors.forEach((err) => toast.error(err));
+      await weeklyMenusApi.updateReservationStatus(reservationId, status);
+      toast.success('Estado actualizado');
+      if (selectedMenu) {
+        const { reservations } = await weeklyMenusApi.getMenuReservations(selectedMenu.menu_id);
+        setMenuReservations(reservations);
       }
       loadData();
     } catch (error: any) {
-      toast.error(error.message || 'Error al importar');
+      toast.error(error.message || 'Error al actualizar estado');
     }
-    e.target.value = '';
   };
 
   const getStatusBadge = (status: ReservationStatus) => {
-    const variants: Record<ReservationStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: typeof CheckCircle }> = {
-      pending: { variant: 'secondary', icon: Clock },
-      confirmed: { variant: 'default', icon: CheckCircle },
-      delivered: { variant: 'outline', icon: CheckCircle },
-      cancelled: { variant: 'destructive', icon: XCircle },
+    const config: Record<ReservationStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+      pending: { variant: 'secondary', label: 'Pendiente' },
+      confirmed: { variant: 'default', label: 'Confirmado' },
+      delivered: { variant: 'outline', label: 'Entregado' },
+      cancelled: { variant: 'destructive', label: 'Cancelado' },
     };
-    const config = variants[status];
-    const Icon = config.icon;
-    return (
-      <Badge variant={config.variant}>
-        <Icon className="mr-1 h-3 w-3" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
+    const { variant, label } = config[status];
+    return <Badge variant={variant}>{label}</Badge>;
   };
 
   const getUserReservation = (menuId: string) => {
     return myReservations.find(
       (r) => r.menu_id === menuId && r.status !== 'cancelled'
-    );
-  };
-
-  const getUserWaitlist = (menuId: string) => {
-    return myWaitlist.find(
-      (w) => w.menu_id === menuId && w.status === 'waiting'
     );
   };
 
@@ -339,47 +290,25 @@ export default function MenuPage() {
           <div>
             <h1 className="text-3xl font-bold">Menú Semanal</h1>
             <p className="text-muted-foreground">
-              {isAdmin
-                ? 'Gestiona los menús semanales'
-                : 'Reserva tus almuerzos de la semana'}
+              {isAdmin ? 'Gestiona los menús semanales' : 'Reserva tus almuerzos de la semana'}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={loadData}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Actualizar
             </Button>
             {isAdmin && (
-              <>
-                <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Plantilla
-                </Button>
-                <label>
-                  <Button variant="outline" size="sm" asChild>
-                    <span>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Importar
-                    </span>
-                  </Button>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={handleImportExcel}
-                  />
-                </label>
-                <Button onClick={() => handleOpenDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Menú
-                </Button>
-              </>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Menú
+              </Button>
             )}
           </div>
         </div>
 
         {isAdmin ? (
-          // Vista Admin: Lista de menús con gestión
+          // Vista Admin
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {menus.length === 0 ? (
               <Card className="col-span-full">
@@ -417,14 +346,17 @@ export default function MenuPage() {
                       <span className="text-xl font-bold text-primary">{formatCurrency(menu.price)}</span>
                       <span className="text-xs text-muted-foreground">
                         <Clock className="inline h-3 w-3 mr-1" />
-                        Hasta: {formatDateTime(menu.reservation_deadline)}
+                        {formatDateTime(menu.reservation_deadline)}
                       </span>
                     </div>
                   </CardContent>
                   <CardFooter className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleOpenDialog(menu)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
+                    <Button variant="outline" size="sm" onClick={() => handleViewReservations(menu)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Ver ({menu.current_reservations})
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleOpenDialog(menu)}>
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDeleteMenu(menu.menu_id)}>
                       <Trash2 className="h-4 w-4" />
@@ -435,15 +367,12 @@ export default function MenuPage() {
             )}
           </div>
         ) : (
-          // Vista Usuario: Menús disponibles y mis reservaciones
+          // Vista Usuario
           <Tabs defaultValue="available">
             <TabsList>
               <TabsTrigger value="available">Menús Disponibles</TabsTrigger>
               <TabsTrigger value="reservations">
                 Mis Reservaciones ({myReservations.filter(r => r.status !== 'cancelled').length})
-              </TabsTrigger>
-              <TabsTrigger value="waitlist">
-                Lista de Espera ({myWaitlist.filter(w => w.status === 'waiting').length})
               </TabsTrigger>
             </TabsList>
 
@@ -459,7 +388,6 @@ export default function MenuPage() {
                 ) : (
                   menus.map((menu) => {
                     const hasReservation = getUserReservation(menu.menu_id);
-                    const inWaitlist = getUserWaitlist(menu.menu_id);
                     const isFull = menu.max_reservations && menu.current_reservations >= menu.max_reservations;
                     const canReserve = menu.can_reserve && !hasReservation && !isFull;
 
@@ -477,13 +405,7 @@ export default function MenuPage() {
                                 Reservado
                               </Badge>
                             )}
-                            {inWaitlist && !hasReservation && (
-                              <Badge variant="secondary">
-                                <Clock className="mr-1 h-3 w-3" />
-                                En espera
-                              </Badge>
-                            )}
-                            {isFull && !hasReservation && !inWaitlist && (
+                            {isFull && !hasReservation && (
                               <Badge variant="destructive">
                                 <AlertCircle className="mr-1 h-3 w-3" />
                                 Lleno
@@ -523,23 +445,9 @@ export default function MenuPage() {
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Reservar
                             </Button>
-                          ) : isFull && !inWaitlist ? (
-                            <Button variant="secondary" className="w-full" onClick={() => handleOpenWaitlistDialog(menu)}>
-                              <UserPlus className="mr-2 h-4 w-4" />
-                              Unirse a Lista de Espera
-                            </Button>
-                          ) : inWaitlist ? (
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => handleLeaveWaitlist(inWaitlist.waitlist_id)}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Salir de Lista de Espera
-                            </Button>
                           ) : (
                             <Button disabled className="w-full">
-                              No disponible
+                              {isFull ? 'Sin cupos' : 'No disponible'}
                             </Button>
                           )}
                         </CardFooter>
@@ -597,49 +505,6 @@ export default function MenuPage() {
                 )}
               </div>
             </TabsContent>
-
-            <TabsContent value="waitlist" className="mt-4">
-              <div className="space-y-4">
-                {myWaitlist.filter(w => w.status === 'waiting').length === 0 ? (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No estás en ninguna lista de espera</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  myWaitlist
-                    .filter(w => w.status === 'waiting')
-                    .map((waitlist) => (
-                      <Card key={waitlist.waitlist_id}>
-                        <CardContent className="flex items-center justify-between py-4">
-                          <div className="space-y-1">
-                            <span className="font-medium">
-                              {waitlist.menu ? formatDate(waitlist.menu.menu_date) : 'Menú'}
-                            </span>
-                            {waitlist.menu && (
-                              <p className="text-sm text-muted-foreground">
-                                {waitlist.menu.main_course_description}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              Cantidad solicitada: {waitlist.quantity}
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleLeaveWaitlist(waitlist.waitlist_id)}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Salir
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))
-                )}
-              </div>
-            </TabsContent>
           </Tabs>
         )}
       </div>
@@ -662,7 +527,7 @@ export default function MenuPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descripción del Menú</Label>
+              <Label htmlFor="description">Descripción</Label>
               <Input
                 id="description"
                 value={formData.description || ''}
@@ -731,7 +596,7 @@ export default function MenuPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveMenu}>{editingMenu ? 'Guardar cambios' : 'Crear menú'}</Button>
+            <Button onClick={handleSaveMenu}>{editingMenu ? 'Guardar' : 'Crear'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -782,45 +647,53 @@ export default function MenuPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Lista de Espera (Usuario) */}
-      <Dialog open={isWaitlistDialogOpen} onOpenChange={setIsWaitlistDialogOpen}>
-        <DialogContent>
+      {/* Dialog: Ver Reservaciones del Menú (Admin) */}
+      <Dialog open={isReservationsDialogOpen} onOpenChange={setIsReservationsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Unirse a Lista de Espera</DialogTitle>
+            <DialogTitle>Reservaciones</DialogTitle>
             <DialogDescription>
-              Te notificaremos si hay disponibilidad
+              {selectedMenu && `${formatDate(selectedMenu.menu_date)} - ${selectedMenu.current_reservations} reservaciones`}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {selectedMenu && (
-              <div className="text-sm space-y-1 p-3 bg-muted rounded-lg">
-                <p><strong>{formatDate(selectedMenu.menu_date)}</strong></p>
-                <p>{selectedMenu.main_course_description}</p>
-              </div>
+          <div className="max-h-[400px] overflow-y-auto space-y-3">
+            {menuReservations.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No hay reservaciones</p>
+            ) : (
+              menuReservations.map((res) => (
+                <div key={res.reservation_id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{res.user?.full_name || 'Usuario'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Cantidad: {res.quantity} | {formatCurrency(res.total_amount)}
+                    </p>
+                    {res.notes && <p className="text-xs text-muted-foreground">Nota: {res.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(res.status)}
+                    {res.status !== 'cancelled' && res.status !== 'delivered' && (
+                      <Select
+                        value={res.status}
+                        onValueChange={(value) => handleUpdateReservationStatus(res.reservation_id, value as ReservationStatus)}
+                      >
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pendiente</SelectItem>
+                          <SelectItem value="confirmed">Confirmar</SelectItem>
+                          <SelectItem value="delivered">Entregado</SelectItem>
+                          <SelectItem value="cancelled">Cancelar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="wl-quantity">Cantidad</Label>
-              <Input
-                id="wl-quantity"
-                type="number"
-                min="1"
-                value={reserveQuantity}
-                onChange={(e) => setReserveQuantity(parseInt(e.target.value) || 1)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="wl-notes">Notas (opcional)</Label>
-              <Textarea
-                id="wl-notes"
-                value={reserveNotes}
-                onChange={(e) => setReserveNotes(e.target.value)}
-                placeholder="Avísenme si hay cupo"
-              />
-            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsWaitlistDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleJoinWaitlist}>Unirse a la Lista</Button>
+            <Button variant="outline" onClick={() => setIsReservationsDialogOpen(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
