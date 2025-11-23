@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useApp } from '@/contexts/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
+import { api } from '@/lib/api';
 import {
   Card,
   CardContent,
@@ -13,19 +13,40 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingBag, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { formatCurrency, getPaymentMethodName } from '@/lib/data';
+import { Order } from '@/lib/types';
+import { toast } from 'sonner';
 
 export default function MyOrdersPage() {
   const { user } = useAuth();
-  const { orders } = useApp();
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const myOrders = useMemo(() => {
-    if (!user) return [];
-    return orders
-      .filter((o) => o.user_id === user.user_id)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [orders, user]);
+  // Cargar órdenes desde la API
+  useEffect(() => {
+    if (user) {
+      loadMyOrders();
+    }
+  }, [user]);
+
+  const loadMyOrders = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Cargando mis órdenes desde la API...');
+
+      // Llamada a la API - endpoint GET /orders/my-orders
+      const response = await api.orders.getMyOrders({ include_items: true });
+
+      console.log('✅ Mis órdenes cargadas:', response.orders.length);
+      setMyOrders(response.orders);
+    } catch (error) {
+      console.error('❌ Error cargando mis órdenes:', error);
+      toast.error('Error al cargar tus órdenes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -75,14 +96,28 @@ export default function MyOrdersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Mis Pedidos</h1>
-          <p className="text-muted-foreground">
-            Historial de todos tus pedidos
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Mis Pedidos</h1>
+            <p className="text-muted-foreground">
+              Historial de todos tus pedidos
+            </p>
+          </div>
+          <button
+            onClick={loadMyOrders}
+            disabled={isLoading}
+            className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
-        {myOrders.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <RefreshCw className="h-16 w-16 text-muted-foreground mb-4 animate-spin" />
+            <p className="text-muted-foreground">Cargando tus pedidos...</p>
+          </div>
+        ) : myOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <ShoppingBag className="h-24 w-24 text-muted-foreground mb-4" />
             <h2 className="text-2xl font-bold mb-2">No tienes pedidos aún</h2>
@@ -99,7 +134,7 @@ export default function MyOrdersPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <ShoppingBag className="h-5 w-5" />
-                        Pedido #{order.order_id}
+                        {order.order_number}
                       </CardTitle>
                       <CardDescription>
                         {new Date(order.created_at).toLocaleString('es-PE', {
