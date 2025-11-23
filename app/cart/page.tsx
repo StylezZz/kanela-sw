@@ -9,6 +9,7 @@ import { useApp } from '@/contexts/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Card,
   CardContent,
@@ -35,7 +36,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Copy, Upload, Check } from 'lucide-react';
 import { formatCurrency, getPaymentMethodName, generateId } from '@/lib/data';
 import { PaymentMethod } from '@/lib/types';
 import { toast } from 'sonner';
@@ -49,11 +50,17 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Número de teléfono del dueño para Yape/Plin
+  const OWNER_PHONE = '987654321';
 
   const paymentMethods: PaymentMethod[] = [
     'cash',
     'card',
     'credit',
+    'yape_plin',
   ];
 
   const handleIncrement = (productId: string, currentQuantity: number) => {
@@ -63,6 +70,33 @@ export default function CartPage() {
   const handleDecrement = (productId: string, currentQuantity: number) => {
     if (currentQuantity > 1) {
       updateQuantity(productId, currentQuantity - 1);
+    }
+  };
+
+  const handleCopyPhone = async () => {
+    try {
+      await navigator.clipboard.writeText(OWNER_PHONE);
+      setCopied(true);
+      toast.success('Número copiado al portapapeles');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('Error al copiar el número');
+    }
+  };
+
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('El archivo es demasiado grande. Máximo 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Solo se permiten imágenes');
+        return;
+      }
+      setPaymentReceipt(file);
+      toast.success('Comprobante cargado correctamente');
     }
   };
 
@@ -332,6 +366,106 @@ export default function CartPage() {
                   <span className="font-bold">{formatCurrency(cart.total)}</span> y
                   presenta el comprobante en la cafetería
                 </p>
+              </div>
+            )}
+
+            {paymentMethod === 'yape_plin' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm font-medium text-purple-900 mb-3">
+                    Pago mediante Yape o Plin
+                  </p>
+
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center mb-4">
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <QRCodeSVG
+                        value={OWNER_PHONE}
+                        size={180}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
+                    <p className="text-xs text-purple-700 mt-2 text-center">
+                      Escanea este código QR con Yape o Plin
+                    </p>
+                  </div>
+
+                  {/* Número de teléfono */}
+                  <div className="space-y-2">
+                    <Label className="text-sm text-purple-900">Número de teléfono</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={OWNER_PHONE}
+                        readOnly
+                        className="flex-1 bg-white"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCopyPhone}
+                        className="shrink-0"
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      Monto a transferir: <span className="font-bold">{formatCurrency(cart.total)}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Subir comprobante */}
+                <div className="space-y-2">
+                  <Label htmlFor="receipt" className="text-sm font-medium">
+                    Comprobante de pago (opcional)
+                  </Label>
+                  <div className="flex flex-col gap-2">
+                    <div className="relative">
+                      <Input
+                        id="receipt"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReceiptUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => document.getElementById('receipt')?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {paymentReceipt ? paymentReceipt.name : 'Subir comprobante'}
+                      </Button>
+                    </div>
+                    {paymentReceipt && (
+                      <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-green-700">
+                          Comprobante cargado
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPaymentReceipt(null)}
+                          className="ml-auto"
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Sube una captura de pantalla de tu comprobante de Yape o Plin
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -122,7 +122,7 @@ export interface MenuReservation {
 }
 
 // Métodos de pago y estados
-export type PaymentMethod = 'cash' | 'card' | 'credit';
+export type PaymentMethod = 'cash' | 'card' | 'credit' | 'yape_plin';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';
 
 // Estado de la orden
