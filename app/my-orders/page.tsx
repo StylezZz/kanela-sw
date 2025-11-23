@@ -99,7 +99,7 @@ export default function MyOrdersPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <ShoppingBag className="h-5 w-5" />
-                        Pedido #{order.order_id.slice(-8)}
+                        Pedido #{order.order_id}
                       </CardTitle>
                       <CardDescription>
                         {new Date(order.created_at).toLocaleString('es-PE', {
