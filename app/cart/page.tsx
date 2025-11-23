@@ -9,6 +9,7 @@ import { useApp } from '@/contexts/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Card,
   CardContent,
@@ -35,7 +36,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Copy, Upload, Check } from 'lucide-react';
 import { formatCurrency, getPaymentMethodName, generateId } from '@/lib/data';
 import { PaymentMethod } from '@/lib/types';
 import { toast } from 'sonner';
@@ -49,11 +50,17 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Número de teléfono del dueño para Yape/Plin
+  const OWNER_PHONE = '987654321';
 
   const paymentMethods: PaymentMethod[] = [
     'cash',
     'card',
     'credit',
+    'yape_plin',
   ];
 
   const handleIncrement = (productId: string, currentQuantity: number) => {
@@ -63,6 +70,33 @@ export default function CartPage() {
   const handleDecrement = (productId: string, currentQuantity: number) => {
     if (currentQuantity > 1) {
       updateQuantity(productId, currentQuantity - 1);
+    }
+  };
+
+  const handleCopyPhone = async () => {
+    try {
+      await navigator.clipboard.writeText(OWNER_PHONE);
+      setCopied(true);
+      toast.success('Número copiado al portapapeles');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('Error al copiar el número');
+    }
+  };
+
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('El archivo es demasiado grande. Máximo 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Solo se permiten imágenes');
+        return;
+      }
+      setPaymentReceipt(file);
+      toast.success('Comprobante cargado correctamente');
     }
   };
 
@@ -283,15 +317,16 @@ export default function CartPage() {
       </div>
 
       {/* Dialog de checkout */}
+      {/* Dialog de checkout */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Completar Pedido</DialogTitle>
             <DialogDescription>
               Selecciona el método de pago y confirma tu pedido
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Método de Pago</Label>
               <Select
@@ -312,8 +347,8 @@ export default function CartPage() {
             </div>
 
             {paymentMethod === 'credit' && (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-medium text-yellow-900 mb-2">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm font-medium text-yellow-900 mb-1">
                   Compra a Crédito
                 </p>
                 <p className="text-sm text-yellow-800">
@@ -326,7 +361,7 @@ export default function CartPage() {
             )}
 
             {paymentMethod === 'card' && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-900">
                   Por favor, realiza el pago de{' '}
                   <span className="font-bold">{formatCurrency(cart.total)}</span> y
@@ -335,27 +370,138 @@ export default function CartPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas (opcional)</Label>
+            {paymentMethod === 'yape_plin' && (
+              <div className="space-y-3">
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+                  <p className="text-sm font-semibold text-purple-900 text-center">
+                    Pago mediante Yape o Plin
+                  </p>
+
+                  {/* QR Code más compacto */}
+                  <div className="flex justify-center">
+                    <div className="bg-white p-2 rounded-lg shadow-sm border border-purple-100">
+                      <QRCodeSVG
+                        value={OWNER_PHONE}
+                        size={140}
+                        level="H"
+                        includeMargin={false}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-purple-700 text-center">
+                    Escanea este código QR con tu app
+                  </p>
+
+                  {/* Número de teléfono compacto */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-purple-900">Número de teléfono</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={OWNER_PHONE}
+                        readOnly
+                        className="flex-1 bg-white font-mono text-center text-sm h-9"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCopyPhone}
+                        className="shrink-0 h-9 w-9"
+                        title="Copiar número"
+                      >
+                        {copied ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Monto más compacto */}
+                  <div className="bg-purple-100 p-2.5 rounded-md border border-purple-300">
+                    <p className="text-xs text-purple-900 text-center">
+                      Monto a transferir:{' '}
+                      <span className="font-bold text-base text-purple-950">
+                        {formatCurrency(cart.total)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Comprobante compacto */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="receipt" className="text-xs font-medium">
+                    Comprobante de pago (opcional)
+                  </Label>
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      id="receipt"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleReceiptUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start h-9"
+                      onClick={() => document.getElementById('receipt')?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-2" />
+                      {paymentReceipt ? (
+                        <span className="truncate text-xs">{paymentReceipt.name}</span>
+                      ) : (
+                        'Subir captura de pantalla'
+                      )}
+                    </Button>
+                    {paymentReceipt && (
+                      <div className="flex items-center justify-between gap-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                          <span className="text-xs text-green-700 truncate">
+                            {paymentReceipt.name}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPaymentReceipt(null)}
+                          className="shrink-0 h-7 w-7 p-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-sm">Notas (opcional)</Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Instrucciones especiales..."
-                rows={3}
+                rows={2}
+                className="text-sm resize-none"
               />
             </div>
 
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex justify-between mb-2">
-                <span className="font-medium">Total a pagar:</span>
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-sm">Total a pagar:</span>
                 <span className="text-xl font-bold text-primary">
                   {formatCurrency(cart.total)}
                 </span>
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setIsCheckoutOpen(false)}

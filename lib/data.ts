@@ -165,6 +165,7 @@ export const getPaymentMethodName = (method: string): string => {
     card: 'Tarjeta',
     credit: 'Fiado',
     transfer: 'Transferencia',
+    yape_plin: 'Yape/Plin',
     // Legacy values (por compatibilidad)
     efectivo: 'Efectivo',
     yape: 'Yape',
