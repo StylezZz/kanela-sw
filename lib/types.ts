@@ -153,6 +153,13 @@ export interface Order {
   qr_code?: string;
   created_at: string;
   updated_at: string;
+  // Customer info (campos directos del backend)
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  // Estadísticas de items
+  items_count?: number;
+  total_items_quantity?: number;
   // Joins
   user?: User;
   items?: OrderItem[];
