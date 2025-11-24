@@ -59,7 +59,7 @@ export default function CartPage() {
     'cash',
     'card',
     'credit',
-    'yape_plin',
+    'yape',
   ];
 
   const handleIncrement = (productId: string, currentQuantity: number) => {
@@ -340,7 +340,7 @@ export default function CartPage() {
               </div>
             )}
 
-            {paymentMethod === 'yape_plin' && (
+            {paymentMethod === 'yape' && (
               <div className="space-y-3">
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
                   <p className="text-sm font-semibold text-purple-900 text-center">
