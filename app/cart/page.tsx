@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { useApp } from '@/contexts/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
+import { api } from '@/lib/api';
 import {
   Card,
   CardContent,
@@ -45,7 +45,6 @@ export default function CartPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
-  const { addOrder, addTransaction, updateUserBalance } = useApp();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
@@ -60,7 +59,7 @@ export default function CartPage() {
     'cash',
     'card',
     'credit',
-    'yape_plin',
+    'yape',
   ];
 
   const handleIncrement = (productId: string, currentQuantity: number) => {
@@ -106,67 +105,38 @@ export default function CartPage() {
     setIsProcessing(true);
 
     try {
-      // Crear la orden
-      addOrder({
-        user_id: user.user_id,
-        order_number: '', // Se generará automáticamente
-        total_amount: cart.total.toString(),
-        status: 'pending',
+      console.log('🛒 Creando orden mediante API del backend...');
+
+      // Crear la orden usando la API del backend
+      const newOrder = await api.orders.create({
         payment_method: paymentMethod,
-        payment_status: paymentMethod === 'credit' ? 'pending' : 'paid',
-        is_credit_order: paymentMethod === 'credit',
-        credit_paid_amount: '0.00',
-        notes,
-        updated_at: new Date().toISOString(),
+        notes: notes || undefined,
         items: cart.items.map((item) => ({
-          order_item_id: '',
-          order_id: '',
           product_id: item.product.product_id,
-          product_name: item.product.name,
           quantity: item.quantity,
-          unit_price: item.product.price,
-          subtotal: (parseFloat(item.product.price) * item.quantity).toString(),
-          created_at: new Date().toISOString(),
+          customizations: undefined, // Puedes agregar customizaciones si es necesario
         })),
-      } as any);
+      });
 
-      // Si es fiado, actualizar el balance del usuario
-      if (paymentMethod === 'credit') {
-        const currentBalance = parseFloat(user.current_balance);
-        const newBalance = currentBalance - cart.total;
-        updateUserBalance(user.user_id, -cart.total);
-
-        // Crear transacción
-        addTransaction({
-          userId: user.user_id,
-          type: 'fiado',
-          amount: -cart.total,
-          balance: newBalance,
-          description: `Compra a crédito - ${cart.items.length} productos`,
-          paymentMethod: 'credit',
-          createdBy: user.user_id,
-        });
-      } else {
-        // Crear transacción para otros métodos de pago
-        addTransaction({
-          userId: user.user_id,
-          type: 'compra',
-          amount: -cart.total,
-          balance: parseFloat(user.current_balance),
-          description: `Compra - ${cart.items.length} productos`,
-          paymentMethod,
-          createdBy: user.user_id,
-        });
-      }
+      console.log('✅ Orden creada exitosamente:', newOrder);
 
       // Limpiar carrito
       clearCart();
 
-      toast.success('Pedido realizado con éxito');
+      // Mostrar código QR si existe
+      if (newOrder.qr_code) {
+        console.log('📱 Código QR generado para la orden');
+      }
+
+      toast.success(`Pedido ${newOrder.order_number} creado con éxito`);
       setIsCheckoutOpen(false);
+      setPaymentReceipt(null);
+      setNotes('');
       router.push('/my-orders');
     } catch (error) {
-      toast.error('Error al procesar el pedido');
+      console.error('❌ Error al procesar el pedido:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al procesar el pedido';
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -370,7 +340,7 @@ export default function CartPage() {
               </div>
             )}
 
-            {paymentMethod === 'yape_plin' && (
+            {paymentMethod === 'yape' && (
               <div className="space-y-3">
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
                   <p className="text-sm font-semibold text-purple-900 text-center">

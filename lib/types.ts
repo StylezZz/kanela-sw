@@ -122,7 +122,7 @@ export interface MenuReservation {
 }
 
 // Métodos de pago y estados
-export type PaymentMethod = 'cash' | 'card' | 'credit' | 'yape_plin';
+export type PaymentMethod = 'cash' | 'card' | 'credit' | 'yape';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';
 
 // Estado de la orden
@@ -166,10 +166,10 @@ export interface Order {
 }
 
 export interface CreateOrderDTO {
-  user_id: string;
   items: CreateOrderItemDTO[];
   payment_method: PaymentMethod;
   notes?: string;
+  estimated_ready_time?: string; // ISO 8601 format
 }
 
 // ==================== ITEMS DE ORDEN ====================
