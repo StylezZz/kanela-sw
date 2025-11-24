@@ -30,6 +30,18 @@ import type {
   DemandReport,
   ImportMenusResult,
   ReservationStatus,
+  MyAccountResponse,
+  CreditAvailability,
+  MyCreditPaymentDTO,
+  AdminCreditPaymentDTO,
+  CreditReport,
+  PendingCreditOrder,
+  UserWithDebt,
+  DebtReportItem,
+  MonthlySummary,
+  EnableCreditDTO,
+  UpdateCreditLimitDTO,
+  AdjustDebtDTO,
 } from './types';
 
 // ==================== HELPER PARA HACER REQUESTS ====================
@@ -1224,6 +1236,370 @@ export const weeklyMenusApi = {
   },
 };
 
+// ==================== CRÉDITO ====================
+
+export const creditApi = {
+  // ========== ENDPOINTS PARA CLIENTES ==========
+
+  /**
+   * Obtener mi estado de cuenta
+   * GET /api/credit/my-account
+   */
+  getMyAccount: async (): Promise<MyAccountResponse> => {
+    const response = await apiRequest<BackendResponse<MyAccountResponse>>(
+      '/credit/my-account'
+    );
+    return response.data!;
+  },
+
+  /**
+   * Verificar disponibilidad de crédito
+   * POST /api/credit/check-availability
+   */
+  checkAvailability: async (order_amount: number): Promise<CreditAvailability> => {
+    const response = await apiRequest<BackendResponse<CreditAvailability>>(
+      '/credit/check-availability',
+      {
+        method: 'POST',
+        body: JSON.stringify({ order_amount }),
+      }
+    );
+    return response.data!;
+  },
+
+  /**
+   * Pagar mi deuda
+   * POST /api/credit/my-payment
+   */
+  makeMyPayment: async (paymentData: MyCreditPaymentDTO): Promise<CreditPayment> => {
+    const response = await apiRequest<BackendResponse<{ payment: CreditPayment }>>(
+      '/credit/my-payment',
+      {
+        method: 'POST',
+        body: JSON.stringify(paymentData),
+      }
+    );
+    return response.data!.payment;
+  },
+
+  /**
+   * Obtener mi historial crediticio
+   * GET /api/credit/my-history?limit=50
+   */
+  getMyHistory: async (limit?: number): Promise<{ history: CreditHistory[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (limit) queryParams.append('limit', limit.toString());
+
+    const response = await apiRequest<BackendResponse<{ history: CreditHistory[] }>>(
+      `/credit/my-history?${queryParams}`
+    );
+    return {
+      history: response.data!.history,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener mis pedidos fiados pendientes
+   * GET /api/credit/my-pending-orders
+   */
+  getMyPendingOrders: async (): Promise<{ orders: PendingCreditOrder[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ orders: PendingCreditOrder[] }>>(
+      '/credit/my-pending-orders'
+    );
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener mi reporte de gastos fiados
+   * GET /api/credit/my-report?period=monthly
+   */
+  getMyReport: async (params?: {
+    period?: 'daily' | 'weekly' | 'monthly';
+    start_date?: string;
+    end_date?: string;
+  }): Promise<CreditReport> => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+    const response = await apiRequest<BackendResponse<CreditReport>>(
+      `/credit/my-report?${queryParams}`
+    );
+    return response.data!;
+  },
+
+  /**
+   * Descargar mi reporte en PDF
+   * GET /api/credit/my-report/pdf?period=monthly
+   */
+  downloadMyReportPDF: async (params?: {
+    period?: 'daily' | 'weekly' | 'monthly';
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+    const url = `${API_CONFIG.BASE_URL}/credit/my-report/pdf?${queryParams}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar el reporte PDF');
+    }
+
+    return await response.blob();
+  },
+
+  /**
+   * Descargar mi estado de cuenta en PDF
+   * GET /api/credit/my-account/pdf
+   */
+  downloadMyAccountPDF: async (): Promise<Blob> => {
+    const url = `${API_CONFIG.BASE_URL}/credit/my-account/pdf`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar el estado de cuenta PDF');
+    }
+
+    return await response.blob();
+  },
+
+  // ========== ENDPOINTS PARA ADMINISTRADORES ==========
+
+  /**
+   * Registrar pago por el cliente (Admin)
+   * POST /api/credit/payment
+   */
+  registerPayment: async (paymentData: AdminCreditPaymentDTO): Promise<CreditPayment> => {
+    const response = await apiRequest<BackendResponse<{ payment: CreditPayment }>>(
+      '/credit/payment',
+      {
+        method: 'POST',
+        body: JSON.stringify(paymentData),
+      }
+    );
+    return response.data!.payment;
+  },
+
+  /**
+   * Obtener historial de pagos de un usuario (Admin)
+   * GET /api/credit/payments/:userId?limit=50
+   */
+  getUserPayments: async (userId: string, limit?: number): Promise<{ payments: CreditPayment[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (limit) queryParams.append('limit', limit.toString());
+
+    const response = await apiRequest<BackendResponse<{ payments: CreditPayment[] }>>(
+      `/credit/payments/${userId}?${queryParams}`
+    );
+    return {
+      payments: response.data!.payments,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener historial crediticio de un usuario (Admin)
+   * GET /api/credit/history/:userId?limit=100
+   */
+  getUserHistory: async (userId: string, limit?: number): Promise<{ history: CreditHistory[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (limit) queryParams.append('limit', limit.toString());
+
+    const response = await apiRequest<BackendResponse<{ history: CreditHistory[] }>>(
+      `/credit/history/${userId}?${queryParams}`
+    );
+    return {
+      history: response.data!.history,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener pedidos pendientes de un usuario (Admin)
+   * GET /api/credit/pending-orders/:userId
+   */
+  getUserPendingOrders: async (userId: string): Promise<{ orders: PendingCreditOrder[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ orders: PendingCreditOrder[] }>>(
+      `/credit/pending-orders/${userId}`
+    );
+    return {
+      orders: response.data!.orders,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener todos los usuarios con deuda (Admin)
+   * GET /api/credit/users-with-debt
+   */
+  getUsersWithDebt: async (): Promise<{ users: UserWithDebt[]; count: number }> => {
+    const response = await apiRequest<BackendResponse<{ users: UserWithDebt[] }>>(
+      '/credit/users-with-debt'
+    );
+    return {
+      users: response.data!.users,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Generar reporte de deudas (Admin)
+   * GET /api/credit/debt-report?min_debt=50&account_status=active
+   */
+  getDebtReport: async (params?: {
+    min_debt?: number;
+    account_status?: 'active' | 'suspended' | 'inactive';
+  }): Promise<{ users: DebtReportItem[]; count: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.min_debt) queryParams.append('min_debt', params.min_debt.toString());
+    if (params?.account_status) queryParams.append('account_status', params.account_status);
+
+    const response = await apiRequest<BackendResponse<{ users: DebtReportItem[] }>>(
+      `/credit/debt-report?${queryParams}`
+    );
+    return {
+      users: response.data!.users,
+      count: response.count || 0,
+    };
+  },
+
+  /**
+   * Obtener resumen mensual (Admin)
+   * GET /api/credit/monthly-summary?year=2025&month=11
+   */
+  getMonthlySummary: async (year: number, month: number): Promise<MonthlySummary> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('year', year.toString());
+    queryParams.append('month', month.toString());
+
+    const response = await apiRequest<BackendResponse<{ summary: MonthlySummary }>>(
+      `/credit/monthly-summary?${queryParams}`
+    );
+    return response.data!.summary;
+  },
+
+  /**
+   * Obtener reporte de un usuario específico (Admin)
+   * GET /api/credit/user-report/:userId?period=monthly
+   */
+  getUserReport: async (userId: string, params?: {
+    period?: 'daily' | 'weekly' | 'monthly';
+    start_date?: string;
+    end_date?: string;
+  }): Promise<CreditReport> => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+    const response = await apiRequest<BackendResponse<CreditReport>>(
+      `/credit/user-report/${userId}?${queryParams}`
+    );
+    return response.data!;
+  },
+
+  /**
+   * Descargar reporte de usuario en PDF (Admin)
+   * GET /api/credit/user-report/:userId/pdf?period=monthly
+   */
+  downloadUserReportPDF: async (userId: string, params?: {
+    period?: 'daily' | 'weekly' | 'monthly';
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+    const url = `${API_CONFIG.BASE_URL}/credit/user-report/${userId}/pdf?${queryParams}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar el reporte de usuario PDF');
+    }
+
+    return await response.blob();
+  },
+
+  /**
+   * Activar cuenta de crédito (Admin)
+   * POST /api/credit/enable/:userId
+   */
+  enableCredit: async (userId: string, data: EnableCreditDTO): Promise<User> => {
+    const response = await apiRequest<BackendResponse<{ user: User }>>(
+      `/credit/enable/${userId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return response.data!.user;
+  },
+
+  /**
+   * Desactivar cuenta de crédito (Admin)
+   * POST /api/credit/disable/:userId
+   */
+  disableCredit: async (userId: string): Promise<User> => {
+    const response = await apiRequest<BackendResponse<{ user: User }>>(
+      `/credit/disable/${userId}`,
+      {
+        method: 'POST',
+      }
+    );
+    return response.data!.user;
+  },
+
+  /**
+   * Actualizar límite de crédito (Admin)
+   * PATCH /api/credit/update-limit/:userId
+   */
+  updateCreditLimit: async (userId: string, data: UpdateCreditLimitDTO): Promise<User> => {
+    const response = await apiRequest<BackendResponse<{ user: User }>>(
+      `/credit/update-limit/${userId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
+    return response.data!.user;
+  },
+
+  /**
+   * Ajustar deuda manualmente (Admin)
+   * POST /api/credit/adjust-debt/:userId
+   */
+  adjustDebt: async (userId: string, data: AdjustDebtDTO): Promise<{ user: User; history: CreditHistory }> => {
+    const response = await apiRequest<BackendResponse<{ user: User; history: CreditHistory }>>(
+      `/credit/adjust-debt/${userId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return response.data!;
+  },
+};
+
 // ==================== EXPORTAR TODO ====================
 
 export const api = {
@@ -1236,6 +1612,7 @@ export const api = {
   notifications: notificationsApi,
   dashboard: dashboardApi,
   weeklyMenus: weeklyMenusApi,
+  credit: creditApi,
 };
 
 export default api;
