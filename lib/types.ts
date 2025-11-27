@@ -499,3 +499,168 @@ export interface ImportMenusResult {
   errors: string[];
   createdMenus: WeeklyMenuBackend[];
 }
+
+// ==================== CRÉDITO ====================
+
+// Cuenta de crédito
+export interface CreditAccount {
+  credit_limit: number;
+  current_balance: number;
+  available_credit: number;
+  usage_percent: string;
+}
+
+// Pedido pendiente de crédito
+export interface PendingCreditOrder {
+  order_id: string;
+  order_number: string;
+  total_amount: number;
+  credit_paid_amount: number;
+  remaining_amount: number;
+  payment_status: PaymentStatus;
+  created_at: string;
+}
+
+// Estado de cuenta del cliente
+export interface MyAccountResponse {
+  account: CreditAccount;
+  pending_orders: PendingCreditOrder[];
+  recent_history: CreditHistory[];
+}
+
+// Verificación de disponibilidad de crédito
+export interface CreditAvailability {
+  canOrder: boolean;
+  reason?: string;
+  current_balance: number;
+  credit_limit: number;
+  available_credit: number;
+  order_amount?: number;
+  remaining_after_order?: number;
+}
+
+// Pago de crédito (cliente)
+export interface MyCreditPaymentDTO {
+  amount: number;
+  payment_method: 'cash' | 'card' | 'yape' | 'plin' | 'transfer';
+  order_id?: string;
+  transaction_reference?: string;
+  notes?: string;
+}
+
+// Pago de crédito (admin)
+export interface AdminCreditPaymentDTO {
+  user_id: string;
+  amount: number;
+  payment_method: 'cash' | 'card' | 'yape' | 'plin' | 'transfer';
+  order_id?: string;
+  transaction_reference?: string;
+  notes?: string;
+}
+
+// Item de pedido en reporte
+export interface CreditReportOrderItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+}
+
+// Pedido en reporte de crédito
+export interface CreditReportOrder {
+  order_id: string;
+  order_number: string;
+  total_amount: number;
+  credit_paid_amount: number;
+  remaining_amount: number;
+  payment_status: PaymentStatus;
+  created_at: string;
+  items: CreditReportOrderItem[];
+}
+
+// Pago en reporte de crédito
+export interface CreditReportPayment {
+  payment_id: string;
+  amount: number;
+  payment_method: string;
+  created_at: string;
+  notes?: string;
+  order_number?: string;
+}
+
+// Reporte de crédito
+export interface CreditReport {
+  period: 'daily' | 'weekly' | 'monthly';
+  orders: {
+    count: number;
+    total: number;
+    items: CreditReportOrder[];
+  };
+  payments: {
+    count: number;
+    total: number;
+    items: CreditReportPayment[];
+  };
+  summary: {
+    total_ordered: number;
+    total_paid: number;
+    total_pending: number;
+  };
+}
+
+// Usuario con deuda
+export interface UserWithDebt {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  credit_limit: number;
+  current_balance: number;
+  available_credit: number;
+  usage_percent: string;
+  account_status: AccountStatus;
+  last_payment_date?: string;
+  last_payment_amount?: number;
+  pending_orders_count: number;
+}
+
+// Reporte de deudas
+export interface DebtReportItem extends UserWithDebt {
+  oldest_debt_date?: string;
+  days_since_last_payment?: number;
+}
+
+// Resumen mensual
+export interface MonthlySummary {
+  year: number;
+  month: number;
+  total_orders: number;
+  total_ordered_amount: number;
+  total_payments: number;
+  total_paid_amount: number;
+  net_credit_change: number;
+  active_credit_users: number;
+  users_with_debt: number;
+  total_outstanding_debt: number;
+  avg_debt_per_user: number;
+  top_debtors: Array<{
+    user_id: string;
+    full_name: string;
+    current_balance: number;
+    credit_limit: number;
+  }>;
+}
+
+// DTOs para acciones de administrador
+export interface EnableCreditDTO {
+  credit_limit: number;
+}
+
+export interface UpdateCreditLimitDTO {
+  new_limit: number;
+}
+
+export interface AdjustDebtDTO {
+  amount: number;
+  reason: string;
+}
