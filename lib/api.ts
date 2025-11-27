@@ -42,6 +42,18 @@ import type {
   EnableCreditDTO,
   UpdateCreditLimitDTO,
   AdjustDebtDTO,
+  StatisticsSummary,
+  TopProduct,
+  TopCategory,
+  TopMenu,
+  SalesByDay,
+  SalesByHour,
+  SalesTrend,
+  TopCustomer,
+  PaymentMethodStats,
+  DeliveryTimeStats,
+  DashboardStatistics,
+  CompleteReport,
 } from './types';
 
 // ==================== HELPER PARA HACER REQUESTS ====================
@@ -1600,6 +1612,234 @@ export const creditApi = {
   },
 };
 
+// ==================== ESTADÍSTICAS ====================
+
+export const statisticsApi = {
+  /**
+   * Obtener dashboard completo
+   * GET /api/statistics/dashboard
+   */
+  getDashboard: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<DashboardStatistics> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<DashboardStatistics>>(
+      `/statistics/dashboard?${queryParams}`
+    );
+    return response.data!;
+  },
+
+  /**
+   * Obtener resumen general
+   * GET /api/statistics/summary
+   */
+  getSummary: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<StatisticsSummary> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<StatisticsSummary>>(
+      `/statistics/summary?${queryParams}`
+    );
+    return response.data!;
+  },
+
+  /**
+   * Obtener top productos
+   * GET /api/statistics/top-products
+   */
+  getTopProducts: async (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<TopProduct[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ products: TopProduct[] }>>(
+      `/statistics/top-products?${queryParams}`
+    );
+    return response.data!.products;
+  },
+
+  /**
+   * Obtener top categorías
+   * GET /api/statistics/top-categories
+   */
+  getTopCategories: async (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<TopCategory[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ categories: TopCategory[] }>>(
+      `/statistics/top-categories?${queryParams}`
+    );
+    return response.data!.categories;
+  },
+
+  /**
+   * Obtener top menús
+   * GET /api/statistics/top-menus
+   */
+  getTopMenus: async (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<TopMenu[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ menus: TopMenu[] }>>(
+      `/statistics/top-menus?${queryParams}`
+    );
+    return response.data!.menus;
+  },
+
+  /**
+   * Obtener ventas por día
+   * GET /api/statistics/sales-by-day
+   */
+  getSalesByDay: async (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<SalesByDay[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ sales: SalesByDay[] }>>(
+      `/statistics/sales-by-day?${queryParams}`
+    );
+    return response.data!.sales;
+  },
+
+  /**
+   * Obtener ventas por hora
+   * GET /api/statistics/sales-by-hour
+   */
+  getSalesByHour: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<SalesByHour[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ sales: SalesByHour[] }>>(
+      `/statistics/sales-by-hour?${queryParams}`
+    );
+    return response.data!.sales;
+  },
+
+  /**
+   * Obtener tendencia de ventas
+   * GET /api/statistics/sales-trend
+   */
+  getSalesTrend: async (params?: {
+    months?: number;
+  }): Promise<SalesTrend[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.months) queryParams.append('months', params.months.toString());
+
+    const response = await apiRequest<BackendResponse<{ trend: SalesTrend[] }>>(
+      `/statistics/sales-trend?${queryParams}`
+    );
+    return response.data!.trend;
+  },
+
+  /**
+   * Obtener top clientes
+   * GET /api/statistics/top-customers
+   */
+  getTopCustomers: async (params?: {
+    limit?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<TopCustomer[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ customers: TopCustomer[] }>>(
+      `/statistics/top-customers?${queryParams}`
+    );
+    return response.data!.customers;
+  },
+
+  /**
+   * Obtener estadísticas de métodos de pago
+   * GET /api/statistics/payment-methods
+   */
+  getPaymentMethods: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<PaymentMethodStats[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ payment_methods: PaymentMethodStats[] }>>(
+      `/statistics/payment-methods?${queryParams}`
+    );
+    return response.data!.payment_methods;
+  },
+
+  /**
+   * Obtener estadísticas de tiempos de entrega
+   * GET /api/statistics/delivery-times
+   */
+  getDeliveryTimes: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<DeliveryTimeStats> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<{ stats: DeliveryTimeStats }>>(
+      `/statistics/delivery-times?${queryParams}`
+    );
+    return response.data!.stats;
+  },
+
+  /**
+   * Obtener reporte completo
+   * GET /api/statistics/complete-report
+   */
+  getCompleteReport: async (params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<CompleteReport> => {
+    const queryParams = new URLSearchParams();
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const response = await apiRequest<BackendResponse<CompleteReport>>(
+      `/statistics/complete-report?${queryParams}`
+    );
+    return response.data!;
+  },
+};
+
 // ==================== EXPORTAR TODO ====================
 
 export const api = {
@@ -1613,6 +1853,7 @@ export const api = {
   dashboard: dashboardApi,
   weeklyMenus: weeklyMenusApi,
   credit: creditApi,
+  statistics: statisticsApi,
 };
 
 export default api;

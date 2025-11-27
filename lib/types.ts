@@ -664,3 +664,148 @@ export interface AdjustDebtDTO {
   amount: number;
   reason: string;
 }
+
+// ==================== ESTADÍSTICAS ====================
+
+// Resumen general de estadísticas
+export interface StatisticsSummary {
+  total_orders: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+  active_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  unique_customers: number;
+  total_items_sold: number;
+  orders_by_payment: {
+    payment_method: PaymentMethod;
+    count: number;
+    total_amount: number;
+  }[];
+}
+
+// Top productos
+export interface TopProduct {
+  product_id: string;
+  product_name: string;
+  category_name: string;
+  image_url?: string;
+  total_quantity: number;
+  times_ordered: number;
+  total_revenue: number;
+  avg_price: number;
+}
+
+// Top categorías
+export interface TopCategory {
+  category_id: string;
+  category_name: string;
+  description?: string;
+  times_ordered: number;
+  items_sold: number;
+  total_revenue: number;
+  product_count: number;
+}
+
+// Top menús
+export interface TopMenu {
+  menu_id: string;
+  menu_name: string;
+  week_number: number;
+  year: number;
+  times_ordered: number;
+  items_sold: number;
+  total_revenue: number;
+}
+
+// Ventas por día
+export interface SalesByDay {
+  date: string;
+  day_name: string;
+  total_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  cash_revenue: number;
+  card_revenue: number;
+  credit_revenue: number;
+  yape_revenue: number;
+}
+
+// Ventas por hora
+export interface SalesByHour {
+  hour: number;
+  total_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+}
+
+// Tendencia de ventas
+export interface SalesTrend {
+  month: string;
+  year: number;
+  total_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+}
+
+// Top clientes
+export interface TopCustomer {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  total_orders: number;
+  total_spent: number;
+  avg_order_value: number;
+  last_order_date: string;
+  has_credit_account: boolean;
+  current_balance: number;
+}
+
+// Métodos de pago
+export interface PaymentMethodStats {
+  payment_method: PaymentMethod;
+  total_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  percentage: number;
+}
+
+// Tiempos de entrega
+export interface DeliveryTimeStats {
+  avg_delivery_time: number;
+  min_delivery_time: number;
+  max_delivery_time: number;
+  median_delivery_time: number;
+  total_delivered_orders: number;
+}
+
+// Dashboard completo
+export interface DashboardStatistics {
+  summary: StatisticsSummary;
+  top_products: TopProduct[];
+  top_categories: TopCategory[];
+  sales_last_7_days: SalesByDay[];
+  sales_by_hour: SalesByHour[];
+  payment_methods: PaymentMethodStats[];
+  top_customers: TopCustomer[];
+  delivery_stats: DeliveryTimeStats;
+}
+
+// Reporte completo
+export interface CompleteReport {
+  summary: StatisticsSummary;
+  top_products: TopProduct[];
+  top_customers: TopCustomer[];
+  top_categories: TopCategory[];
+  sales_last_7_days: SalesByDay[];
+  payment_methods: PaymentMethodStats[];
+  delivery_stats: DeliveryTimeStats;
+  period: {
+    date_from: string;
+    date_to: string;
+  };
+  generated_at: string;
+}
