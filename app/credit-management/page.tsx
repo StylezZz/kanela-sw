@@ -82,7 +82,7 @@ export default function CreditManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'with_debt' | 'no_debt'>('all');
-
+  const [isMounted,setIsMounted] = useState(false);
   // Estados de dialogs
   const [selectedUser, setSelectedUser] = useState<UserWithDebt | User | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -112,6 +112,10 @@ export default function CreditManagementPage() {
       router.push('/dashboard');
     }
   }, [isAdmin, router]);
+
+  useEffect(()=>{
+    setIsMounted(true);
+  }, []);
 
   // Cargar datos
   const loadData = async () => {
@@ -327,9 +331,24 @@ export default function CreditManagementPage() {
     }
   };
 
+  const parseAmount = (amount: string | number): number => {
+    if(typeof amount === 'number') return amount;
+    return parseFloat(amount);
+  }
+
   const getUserBalance = (user: UserWithDebt | User): number => {
     return 'current_balance' in user ? user.current_balance : parseFloat(user.current_balance);
   };
+
+  const formatDate = (dateString: string) => {
+    if(!isMounted) return '';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('es-PE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  }
 
   const getUserCreditLimit = (user: UserWithDebt | User): number => {
     return 'credit_limit' in user && typeof user.credit_limit === 'number'
@@ -404,7 +423,7 @@ export default function CreditManagementPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(stats.totalDebt)}
+                {formatCurrency(parseAmount(stats.totalDebt))}
               </div>
               <p className="text-xs text-muted-foreground">
                 Saldo total pendiente
@@ -419,7 +438,7 @@ export default function CreditManagementPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(stats.averageDebt)}
+                {formatCurrency(parseAmount(stats.averageDebt))}
               </div>
               <p className="text-xs text-muted-foreground">
                 Por usuario con deuda
@@ -816,7 +835,7 @@ export default function CreditManagementPage() {
                       {userHistory.map((h) => (
                         <TableRow key={h.history_id}>
                           <TableCell className="whitespace-nowrap">
-                            {new Date(h.created_at).toLocaleDateString('es-PE')}
+                            {formatDate(h.created_at)}
                           </TableCell>
                           <TableCell>
                             <Badge

@@ -129,7 +129,7 @@ export const generateId = (): string => {
 
 // Helper para formatear moneda
 export const formatCurrency = (amount: number): string => {
-  return `S/ ${amount.toFixed(2)}`;
+  return `S/ ${amount}`;
 };
 
 // Helper para obtener el nombre de categoría

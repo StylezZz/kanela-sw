@@ -217,7 +217,7 @@ export const usersApi = {
    * POST /users
    */
   create: async (userData: CreateUserDTO): Promise<User> => {
-    const response = await apiRequest<BackendResponse<{ user: User }>>('/users', {
+    const response = await apiRequest<BackendResponse<{ user: User }>>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -537,7 +537,7 @@ export const ordersApi = {
     if (params?.include_items) queryParams.append('include_items', 'true');
 
     const response = await apiRequest<BackendResponse<{ orders: Order[]; pagination: OrderPagination }>>(
-      `/orders/my-history?${queryParams}`
+      `/orders/my-history`
     );
 
     return {
@@ -1247,7 +1247,7 @@ export const creditApi = {
    */
   getMyAccount: async (): Promise<MyAccountResponse> => {
     const response = await apiRequest<BackendResponse<MyAccountResponse>>(
-      '/credit/my-account'
+      '/credits/my-account'
     );
     return response.data!;
   },
@@ -1258,7 +1258,7 @@ export const creditApi = {
    */
   checkAvailability: async (order_amount: number): Promise<CreditAvailability> => {
     const response = await apiRequest<BackendResponse<CreditAvailability>>(
-      '/credit/check-availability',
+      '/credits/check-availability',
       {
         method: 'POST',
         body: JSON.stringify({ order_amount }),
@@ -1273,7 +1273,7 @@ export const creditApi = {
    */
   makeMyPayment: async (paymentData: MyCreditPaymentDTO): Promise<CreditPayment> => {
     const response = await apiRequest<BackendResponse<{ payment: CreditPayment }>>(
-      '/credit/my-payment',
+      '/credits/my-payment',
       {
         method: 'POST',
         body: JSON.stringify(paymentData),
@@ -1291,7 +1291,7 @@ export const creditApi = {
     if (limit) queryParams.append('limit', limit.toString());
 
     const response = await apiRequest<BackendResponse<{ history: CreditHistory[] }>>(
-      `/credit/my-history?${queryParams}`
+      `/credits/my-history?${queryParams}`
     );
     return {
       history: response.data!.history,
@@ -1305,7 +1305,7 @@ export const creditApi = {
    */
   getMyPendingOrders: async (): Promise<{ orders: PendingCreditOrder[]; count: number }> => {
     const response = await apiRequest<BackendResponse<{ orders: PendingCreditOrder[] }>>(
-      '/credit/my-pending-orders'
+      '/credits/my-pending-orders'
     );
     return {
       orders: response.data!.orders,
@@ -1328,7 +1328,7 @@ export const creditApi = {
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
     const response = await apiRequest<BackendResponse<CreditReport>>(
-      `/credit/my-report?${queryParams}`
+      `/credits/my-report?${queryParams}`
     );
     return response.data!;
   },
@@ -1347,7 +1347,7 @@ export const creditApi = {
     if (params?.start_date) queryParams.append('start_date', params.start_date);
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-    const url = `${API_CONFIG.BASE_URL}/credit/my-report/pdf?${queryParams}`;
+    const url = `${API_CONFIG.BASE_URL}/credits/my-report/pdf?${queryParams}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
@@ -1365,7 +1365,7 @@ export const creditApi = {
    * GET /api/credit/my-account/pdf
    */
   downloadMyAccountPDF: async (): Promise<Blob> => {
-    const url = `${API_CONFIG.BASE_URL}/credit/my-account/pdf`;
+    const url = `${API_CONFIG.BASE_URL}/credits/my-account/pdf`;
     const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
@@ -1386,7 +1386,7 @@ export const creditApi = {
    */
   registerPayment: async (paymentData: AdminCreditPaymentDTO): Promise<CreditPayment> => {
     const response = await apiRequest<BackendResponse<{ payment: CreditPayment }>>(
-      '/credit/payment',
+      '/credits/payment',
       {
         method: 'POST',
         body: JSON.stringify(paymentData),
@@ -1404,7 +1404,7 @@ export const creditApi = {
     if (limit) queryParams.append('limit', limit.toString());
 
     const response = await apiRequest<BackendResponse<{ payments: CreditPayment[] }>>(
-      `/credit/payments/${userId}?${queryParams}`
+      `/credits/payments/${userId}?${queryParams}`
     );
     return {
       payments: response.data!.payments,
@@ -1421,7 +1421,7 @@ export const creditApi = {
     if (limit) queryParams.append('limit', limit.toString());
 
     const response = await apiRequest<BackendResponse<{ history: CreditHistory[] }>>(
-      `/credit/history/${userId}?${queryParams}`
+      `/credits/history/${userId}?${queryParams}`
     );
     return {
       history: response.data!.history,
@@ -1435,7 +1435,7 @@ export const creditApi = {
    */
   getUserPendingOrders: async (userId: string): Promise<{ orders: PendingCreditOrder[]; count: number }> => {
     const response = await apiRequest<BackendResponse<{ orders: PendingCreditOrder[] }>>(
-      `/credit/pending-orders/${userId}`
+      `/credits/pending-orders/${userId}`
     );
     return {
       orders: response.data!.orders,
@@ -1449,7 +1449,7 @@ export const creditApi = {
    */
   getUsersWithDebt: async (): Promise<{ users: UserWithDebt[]; count: number }> => {
     const response = await apiRequest<BackendResponse<{ users: UserWithDebt[] }>>(
-      '/credit/users-with-debt'
+      '/credits/users-with-debt'
     );
     return {
       users: response.data!.users,
@@ -1470,7 +1470,7 @@ export const creditApi = {
     if (params?.account_status) queryParams.append('account_status', params.account_status);
 
     const response = await apiRequest<BackendResponse<{ users: DebtReportItem[] }>>(
-      `/credit/debt-report?${queryParams}`
+      `/credits/debt-report?${queryParams}`
     );
     return {
       users: response.data!.users,
@@ -1488,7 +1488,7 @@ export const creditApi = {
     queryParams.append('month', month.toString());
 
     const response = await apiRequest<BackendResponse<{ summary: MonthlySummary }>>(
-      `/credit/monthly-summary?${queryParams}`
+      `/credits/monthly-summary?${queryParams}`
     );
     return response.data!.summary;
   },
@@ -1508,7 +1508,7 @@ export const creditApi = {
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
     const response = await apiRequest<BackendResponse<CreditReport>>(
-      `/credit/user-report/${userId}?${queryParams}`
+      `/credits/user-report/${userId}?${queryParams}`
     );
     return response.data!;
   },
@@ -1527,7 +1527,7 @@ export const creditApi = {
     if (params?.start_date) queryParams.append('start_date', params.start_date);
     if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-    const url = `${API_CONFIG.BASE_URL}/credit/user-report/${userId}/pdf?${queryParams}`;
+    const url = `${API_CONFIG.BASE_URL}/credits/user-report/${userId}/pdf?${queryParams}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
@@ -1546,7 +1546,7 @@ export const creditApi = {
    */
   enableCredit: async (userId: string, data: EnableCreditDTO): Promise<User> => {
     const response = await apiRequest<BackendResponse<{ user: User }>>(
-      `/credit/enable/${userId}`,
+      `/credits/enable/${userId}`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -1561,7 +1561,7 @@ export const creditApi = {
    */
   disableCredit: async (userId: string): Promise<User> => {
     const response = await apiRequest<BackendResponse<{ user: User }>>(
-      `/credit/disable/${userId}`,
+      `/credits/disable/${userId}`,
       {
         method: 'POST',
       }
@@ -1575,7 +1575,7 @@ export const creditApi = {
    */
   updateCreditLimit: async (userId: string, data: UpdateCreditLimitDTO): Promise<User> => {
     const response = await apiRequest<BackendResponse<{ user: User }>>(
-      `/credit/update-limit/${userId}`,
+      `/credits/update-limit/${userId}`,
       {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -1590,7 +1590,7 @@ export const creditApi = {
    */
   adjustDebt: async (userId: string, data: AdjustDebtDTO): Promise<{ user: User; history: CreditHistory }> => {
     const response = await apiRequest<BackendResponse<{ user: User; history: CreditHistory }>>(
-      `/credit/adjust-debt/${userId}`,
+      `/credits/adjust-debt/${userId}`,
       {
         method: 'POST',
         body: JSON.stringify(data),

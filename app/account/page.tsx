@@ -88,13 +88,13 @@ export default function AccountPage() {
   const loadAccountData = async () => {
     try {
       setIsLoading(true);
-      const [account, history] = await Promise.all([
+      const [account] = await Promise.all([
         api.credit.getMyAccount(),
-        api.credit.getMyHistory(100),
+        //api.credit.getMyHistory(100),
       ]);
 
       setAccountData(account);
-      setCreditHistory(history.history);
+      //setCreditHistory(history.history);
     } catch (error) {
       console.error('Error al cargar datos de cuenta:', error);
       toast.error('Error al cargar los datos de tu cuenta');
